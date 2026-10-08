@@ -9,7 +9,7 @@ from flask import Flask, request, render_template_string, jsonify
 
 app = Flask(__name__)
 
-# Lưu trữ dữ liệu: { "Mã cá nhân: XXX (IP)": ["Nội dung 1", "Nội dung 2"] }
+# Lưu trữ dữ liệu dạng: { "Mã cá nhân: XXX - Tên Thiết Bị": ["Nội dung 1", "Nội dung 2"] }
 clipboard_data = {}
 
 # =========================================================================
@@ -17,19 +17,16 @@ clipboard_data = {}
 # =========================================================================
 def generate_totp(secret):
     try:
-        # Chuẩn hóa: Viết hoa, tự chuyển 0->O, 1->I, loại bỏ ký tự không thuộc Base32
         clean_secret = secret.upper().replace('0', 'O').replace('1', 'I')
         clean_secret = re.sub(r'[^A-Z2-7]', '', clean_secret)
         
         if len(clean_secret) < 8:
             return None
             
-        # Thêm padding '=' cho đủ bội số 8
         missing_padding = len(clean_secret) % 8
         if missing_padding:
             clean_secret += '=' * (8 - missing_padding)
             
-        # Ép kiểu bytes để tương thích tốt trên tất cả phiên bản Python (3.7 - 3.12+)
         secret_bytes = clean_secret.encode('ascii')
         key = base64.b32decode(secret_bytes, casefold=True)
         
@@ -48,7 +45,6 @@ def detect_2fa_in_text(text):
     
     text_str = str(text).strip()
     
-    # Cách 1: Tách theo phân cách đặc biệt (giữ nguyên nhóm nếu có khoảng trắng bên trong)
     parts = re.split(r'[|:,;/\\_\-]+', text_str)
     for part in parts:
         clean = re.sub(r'[^A-Za-z2-701]', '', part)
@@ -61,7 +57,6 @@ def detect_2fa_in_text(text):
                     'time_left': 30 - (int(time.time()) % 30)
                 }
 
-    # Cách 2: Tách theo tất cả ký tự phân cách (bao gồm cả khoảng trắng, tab, new line)
     tokens = re.split(r'[\s|:,;/\\_\-]+', text_str)
     for token in tokens:
         clean = re.sub(r'[^A-Za-z2-701]', '', token)
@@ -131,6 +126,33 @@ HTML_PAGE = """
         .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; margin-top: 15px; }
         textarea { width: 100%; height: 80px; padding: 10px; font-size: 15px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; }
         
+        .device-input-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+        }
+        .device-input-box label {
+            font-weight: bold;
+            font-size: 14px;
+            color: #495057;
+            white-space: nowrap;
+        }
+        .device-input-box input {
+            padding: 6px 10px;
+            font-size: 14px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            outline: none;
+            font-weight: bold;
+            color: #28a745;
+            width: 160px;
+        }
+
         button { padding: 8px 15px; font-size: 14px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: bold; }
         button:hover { opacity: 0.9; }
         .btn-success { background: #28a745; }
@@ -144,7 +166,6 @@ HTML_PAGE = """
         .btn-copy { background: #17a2b8; padding: 5px 12px; font-size: 13px; border-radius: 4px; border: none; color: white; cursor: pointer; font-weight: bold; }
         .btn-copy-all { background: #6c757d; font-size: 12px; float: right; padding: 4px 10px; }
         
-        /* Nút 2FA hiển thị ngay sát cạnh nút Copy */
         .btn-2fa-inline {
             background: #28a745;
             color: white;
@@ -211,6 +232,13 @@ HTML_PAGE = """
 
     <div class="card">
         <h2>📱 Gửi dữ liệu (Dành cho Điện thoại)</h2>
+        
+        <div class="device-input-box">
+            <label for="device-name">📱 Tên/Mã thiết bị này:</label>
+            <input type="text" id="device-name" placeholder="Ví dụ: Máy 1, Máy 2..." oninput="saveDeviceName()">
+            <span style="font-size: 12px; color: #6c757d;">(Dùng để phân biệt các điện thoại)</span>
+        </div>
+
         <textarea id="content" placeholder="Dán nội dung hoặc mã 2FA vào đây..."></textarea><br><br>
         <button onclick="sendData()" class="btn-success">Gửi lên Máy tính</button>
         <span id="send-status" style="margin-left: 10px; font-weight: bold;"></span>
@@ -241,6 +269,15 @@ HTML_PAGE = """
             if (savedCode) {
                 document.getElementById('user-code').value = savedCode;
             }
+
+            // Tự động tạo hoặc lấy Tên Thiết Bị riêng cho điện thoại
+            let savedDevice = localStorage.getItem('my_device_name');
+            if (!savedDevice) {
+                savedDevice = 'Máy ' + Math.floor(1000 + Math.random() * 9000);
+                localStorage.setItem('my_device_name', savedDevice);
+            }
+            document.getElementById('device-name').value = savedDevice;
+
             loadData();
         });
 
@@ -250,8 +287,19 @@ HTML_PAGE = """
             loadData();
         }
 
+        function saveDeviceName() {
+            const name = document.getElementById('device-name').value.trim();
+            if (name) {
+                localStorage.setItem('my_device_name', name);
+            }
+        }
+
         function getUserCode() {
             return document.getElementById('user-code').value.trim();
+        }
+
+        function getDeviceName() {
+            return document.getElementById('device-name').value.trim() || 'Máy ẩn danh';
         }
 
         function copyToClipboard(text) {
@@ -367,6 +415,7 @@ HTML_PAGE = """
         function sendData() {
             const text = document.getElementById('content').value.trim();
             const userCode = getUserCode();
+            const deviceName = getDeviceName();
 
             if (!userCode) {
                 alert('⚠️ BẮT BUỘC: Bạn phải nhập Mã cá nhân ở góc trên bên phải trước khi gửi!');
@@ -385,7 +434,9 @@ HTML_PAGE = """
                     'Content-Type': 'application/x-www-form-urlencoded',
                     'ngrok-skip-browser-warning': 'true'
                 },
-                body: 'content=' + encodeURIComponent(text) + '&user_code=' + encodeURIComponent(userCode)
+                body: 'content=' + encodeURIComponent(text) + 
+                      '&user_code=' + encodeURIComponent(userCode) + 
+                      '&device_name=' + encodeURIComponent(deviceName)
             })
             .then(res => res.json())
             .then(data => {
@@ -407,7 +458,7 @@ HTML_PAGE = """
             const userCode = getUserCode();
 
             if (!userCode) {
-                container.innerHTML = '<p style="color: #dc3545; font-weight: bold; text-align: center; padding: 20px; background: #fff3f3; border: 1px solid #f5c6cb; border-radius: 6px;">⚠️ BẮT BUỘC NHẬP MÃ CÁ NHÂN Ở GÓC TRÊN BÊN PHẢI ĐỂ XEM / LẤY DỮ LIỆU!</p>';
+                container.innerHTML = '<p style="color: #dc3545; font-weight: bold; text-align: center; padding: 20px; background: #fff3f3; border: 1px solid #f5c6cb; border-radius: 6px;">⚠️ BẮT BUỘC NHẬP MÃ CÁ NHÂN Ó GÓC TRÊN BÊN PHẢI ĐỂ XEM / LẤY DỮ LIỆU!</p>';
                 return;
             }
 
@@ -429,7 +480,7 @@ HTML_PAGE = """
                     for (let deviceKey in data) {
                         html += `<div class="device-box">
                             <div class="ip-header">
-                                🔴 ${deviceKey}
+                                📱 ${deviceKey}
                                 <button class="btn-copy-all" onclick="copyAllIp('${deviceKey}')">📋 Copy tất cả mục này</button>
                             </div>
                             <table class="data-table">`;
@@ -437,7 +488,6 @@ HTML_PAGE = """
                         data[deviceKey].forEach((item, index) => {
                             const escapedItem = encodeURIComponent(item.text);
                             
-                            // Mã 2FA nằm ngay bên cạnh nút Copy Dòng
                             let btn2FA = '';
                             if (item.totp) {
                                 btn2FA = `
@@ -484,12 +534,13 @@ def send_data():
     ip = get_client_ip()
     content = request.form.get('content', '').strip()
     user_code = request.form.get('user_code', '').strip()
+    device_name = request.form.get('device_name', '').strip() or f"Máy-{ip}"
     
     if not user_code:
         return jsonify({'status': 'error', 'message': 'Vui lòng nhập Mã cá nhân trước khi gửi!'})
     
     if content:
-        key = f"Mã cá nhân: {user_code} ({ip})"
+        key = f"Mã cá nhân: {user_code} - Thiết bị: {device_name}"
         if key not in clipboard_data:
             clipboard_data[key] = []
         clipboard_data[key].insert(0, content)
