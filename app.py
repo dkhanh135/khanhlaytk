@@ -17,30 +17,42 @@ clipboard_data = {}
 # =========================================================================
 def generate_totp(secret):
     try:
-        clean_secret = re.sub(r'[^A-Z2-7]', '', secret.upper())
-        if len(clean_secret) < 16:
+        # Chuẩn hóa: Viết hoa, tự chuyển 0->O, 1->I, loại bỏ ký tự không thuộc Base32
+        clean_secret = secret.upper().replace('0', 'O').replace('1', 'I')
+        clean_secret = re.sub(r'[^A-Z2-7]', '', clean_secret)
+        
+        if len(clean_secret) < 8:
             return None
+            
+        # Thêm padding '=' cho đủ bội số 8
         missing_padding = len(clean_secret) % 8
         if missing_padding:
             clean_secret += '=' * (8 - missing_padding)
-        key = base64.b32decode(clean_secret, True)
+            
+        # Ép kiểu bytes để tương thích tốt trên tất cả phiên bản Python (3.7 - 3.12+)
+        secret_bytes = clean_secret.encode('ascii')
+        key = base64.b32decode(secret_bytes, casefold=True)
+        
         counter = struct.pack(">Q", int(time.time()) // 30)
         mac = hmac.new(key, counter, hashlib.sha1).digest()
         offset = mac[-1] & 0x0f
         binary = struct.unpack(">I", mac[offset:offset+4])[0] & 0x7fffffff
         return str(binary % 1000000).zfill(6)
-    except Exception:
+    except Exception as e:
+        print(f"⚠️ Lỗi giải mã TOTP: {e}")
         return None
 
 def detect_2fa_in_text(text):
     if not text:
         return None
     
-    # 1. Tách theo các ký tự phân cách common: space, |, :, ;, ,
-    tokens = re.split(r'[\s|:,;=]+', str(text).strip())
-    for token in tokens:
-        clean = re.sub(r'[^A-Za-z2-7]', '', token).upper()
-        if 16 <= len(clean) <= 32:
+    text_str = str(text).strip()
+    
+    # Cách 1: Tách theo phân cách đặc biệt (giữ nguyên nhóm nếu có khoảng trắng bên trong)
+    parts = re.split(r'[|:,;/\\_\-]+', text_str)
+    for part in parts:
+        clean = re.sub(r'[^A-Za-z2-701]', '', part)
+        if 10 <= len(clean) <= 64:
             code = generate_totp(clean)
             if code:
                 return {
@@ -48,13 +60,12 @@ def detect_2fa_in_text(text):
                     'code': code,
                     'time_left': 30 - (int(time.time()) % 30)
                 }
-    
-    # 2. Kiểm tra trường hợp khóa 2FA chứa khoảng trắng (VD: JBSW Y3DP EHPK 3PXP)
-    no_space_text = re.sub(r'\s+', '', str(text))
-    tokens_ns = re.split(r'[|:,;=]+', no_space_text)
-    for token in tokens_ns:
-        clean = re.sub(r'[^A-Za-z2-7]', '', token).upper()
-        if 16 <= len(clean) <= 32:
+
+    # Cách 2: Tách theo tất cả ký tự phân cách (bao gồm cả khoảng trắng, tab, new line)
+    tokens = re.split(r'[\s|:,;/\\_\-]+', text_str)
+    for token in tokens:
+        clean = re.sub(r'[^A-Za-z2-701]', '', token)
+        if 10 <= len(clean) <= 64:
             code = generate_totp(clean)
             if code:
                 return {
@@ -82,7 +93,6 @@ HTML_PAGE = """
             position: relative;
         }
         
-        /* Ô nhập Mã số cá nhân ở góc trên bên phải */
         .user-code-badge {
             position: absolute;
             top: 15px;
@@ -134,12 +144,12 @@ HTML_PAGE = """
         .btn-copy { background: #17a2b8; padding: 5px 12px; font-size: 13px; border-radius: 4px; border: none; color: white; cursor: pointer; font-weight: bold; }
         .btn-copy-all { background: #6c757d; font-size: 12px; float: right; padding: 4px 10px; }
         
-        /* Nút 2FA hiển thị cạnh nút Copy */
+        /* Nút 2FA hiển thị ngay sát cạnh nút Copy */
         .btn-2fa-inline {
             background: #28a745;
             color: white;
             border: none;
-            padding: 4px 10px;
+            padding: 5px 10px;
             font-size: 13px;
             border-radius: 4px;
             cursor: pointer;
@@ -156,15 +166,15 @@ HTML_PAGE = """
         }
         .code-2fa-num {
             font-family: monospace;
-            font-size: 15px;
+            font-size: 14px;
             letter-spacing: 1px;
-            background: rgba(0,0,0,0.15);
-            padding: 1px 6px;
+            background: rgba(0,0,0,0.2);
+            padding: 1px 5px;
             border-radius: 3px;
         }
         .time-2fa-left {
             font-size: 11px;
-            opacity: 0.85;
+            opacity: 0.9;
             font-weight: normal;
         }
 
@@ -194,7 +204,6 @@ HTML_PAGE = """
 </head>
 <body>
 
-    <!-- Ô NHẬP MÃ CÁ NHÂN GÓC TRÊN BÊN PHẢI -->
     <div class="user-code-badge">
         <label for="user-code">🔑 Mã cá nhân (*):</label>
         <input type="text" id="user-code" placeholder="Bắt buộc..." oninput="saveUserCode()">
@@ -210,7 +219,6 @@ HTML_PAGE = """
     <div class="card">
         <h2>💻 Dữ liệu đã nhận (Dành cho Máy tính)</h2>
         
-        <!-- Thanh công cụ Thao tác & Copy -->
         <div class="toolbar">
             <div class="toolbar-title">⚙️ Quản lý dữ liệu:</div>
             <button onclick="loadData()" class="btn-refresh">🔄 Làm mới ngay</button>
@@ -371,4 +379,160 @@ HTML_PAGE = """
                 return;
             }
 
-            fetch('/
+            fetch('/send', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'ngrok-skip-browser-warning': 'true'
+                },
+                body: 'content=' + encodeURIComponent(text) + '&user_code=' + encodeURIComponent(userCode)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    document.getElementById('content').value = '';
+                    const status = document.getElementById('send-status');
+                    status.style.color = '#28a745';
+                    status.innerText = '✅ Đã gửi thành công!';
+                    setTimeout(() => status.innerText = '', 2000);
+                    loadData();
+                } else {
+                    alert('❌ Lỗi: ' + data.message);
+                }
+            });
+        }
+
+        function loadData() {
+            const container = document.getElementById('pc-view');
+            const userCode = getUserCode();
+
+            if (!userCode) {
+                container.innerHTML = '<p style="color: #dc3545; font-weight: bold; text-align: center; padding: 20px; background: #fff3f3; border: 1px solid #f5c6cb; border-radius: 6px;">⚠️ BẮT BUỘC NHẬP MÃ CÁ NHÂN Ở GÓC TRÊN BÊN PHẢI ĐỂ XEM / LẤY DỮ LIỆU!</p>';
+                return;
+            }
+
+            fetch('/api/data?user_code=' + encodeURIComponent(userCode), { headers: HEADERS })
+                .then(res => res.json())
+                .then(res => {
+                    if (res.status !== 'ok') {
+                        container.innerHTML = `<p style="color: #dc3545;">⚠️ ${res.message}</p>`;
+                        return;
+                    }
+
+                    const data = res.data;
+                    if (Object.keys(data).length === 0) {
+                        container.innerHTML = `<p style="color: #777;">Chưa có dữ liệu nào thuộc Mã cá nhân <b>"${userCode}"</b>.</p>`;
+                        return;
+                    }
+
+                    let html = '';
+                    for (let deviceKey in data) {
+                        html += `<div class="device-box">
+                            <div class="ip-header">
+                                🔴 ${deviceKey}
+                                <button class="btn-copy-all" onclick="copyAllIp('${deviceKey}')">📋 Copy tất cả mục này</button>
+                            </div>
+                            <table class="data-table">`;
+                        
+                        data[deviceKey].forEach((item, index) => {
+                            const escapedItem = encodeURIComponent(item.text);
+                            
+                            // Mã 2FA nằm ngay bên cạnh nút Copy Dòng
+                            let btn2FA = '';
+                            if (item.totp) {
+                                btn2FA = `
+                                    <button class="btn-2fa-inline" onclick="copyText('${item.totp.code}', this)" title="Bấm để copy mã 2FA">
+                                        ⚡ 2FA: <span class="code-2fa-num">${item.totp.code}</span>
+                                        <span class="time-2fa-left">(${item.totp.time_left}s)</span>
+                                    </button>
+                                `;
+                            }
+
+                            html += `<tr>
+                                <td class="row-index">Dòng ${index + 1}</td>
+                                <td class="text-cell">${item.text}</td>
+                                <td class="action-cell">
+                                    ${btn2FA}
+                                    <button class="btn-copy" onclick="copyText(decodeURIComponent('${escapedItem}'), this)">Copy Dòng</button>
+                                </td>
+                            </tr>`;
+                        });
+
+                        html += `</table></div>`;
+                    }
+                    container.innerHTML = html;
+                });
+        }
+
+        setInterval(loadData, 2000);
+    </script>
+</body>
+</html>
+"""
+
+def get_client_ip():
+    if request.headers.get('X-Forwarded-For'):
+        return request.headers.get('X-Forwarded-For').split(',')[0].strip()
+    return request.remote_addr
+
+@app.route('/')
+def home():
+    return render_template_string(HTML_PAGE)
+
+@app.route('/send', methods=['POST'])
+def send_data():
+    ip = get_client_ip()
+    content = request.form.get('content', '').strip()
+    user_code = request.form.get('user_code', '').strip()
+    
+    if not user_code:
+        return jsonify({'status': 'error', 'message': 'Vui lòng nhập Mã cá nhân trước khi gửi!'})
+    
+    if content:
+        key = f"Mã cá nhân: {user_code} ({ip})"
+        if key not in clipboard_data:
+            clipboard_data[key] = []
+        clipboard_data[key].insert(0, content)
+        return jsonify({'status': 'ok'})
+        
+    return jsonify({'status': 'error', 'message': 'Nội dung không được để trống!'})
+
+@app.route('/api/data')
+def get_data():
+    user_code = request.args.get('user_code', '').strip()
+    
+    if not user_code:
+        return jsonify({'status': 'error', 'message': 'Bạn phải nhập Mã cá nhân mới có thể xem/lấy dữ liệu!'})
+    
+    prefix = f"Mã cá nhân: {user_code} "
+    filtered_data = {}
+    
+    for k, text_list in clipboard_data.items():
+        if k.startswith(prefix):
+            filtered_data[k] = []
+            for text in text_list:
+                totp_info = detect_2fa_in_text(text)
+                filtered_data[k].append({
+                    'text': text,
+                    'totp': totp_info
+                })
+    
+    return jsonify({'status': 'ok', 'data': filtered_data})
+
+@app.route('/api/clear', methods=['POST'])
+def clear_data():
+    user_code = request.form.get('user_code', '').strip()
+    
+    if not user_code:
+        return jsonify({'status': 'error', 'message': 'Vui lòng nhập Mã cá nhân!'})
+    
+    prefix = f"Mã cá nhân: {user_code} "
+    keys_to_delete = [k for k in clipboard_data if k.startswith(prefix)]
+    for k in keys_to_delete:
+        del clipboard_data[k]
+        
+    return jsonify({'status': 'ok'})
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
