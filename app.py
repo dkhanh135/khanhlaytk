@@ -4,7 +4,7 @@ from flask import Flask, request, render_template_string, jsonify
 app = Flask(__name__)
 
 # Danh sách lưu trữ tài khoản theo thứ tự dòng (Mã số = STT 1, 2, 3...)
-accounts_list = [s1,x3,n7,m5,f9,kh8]
+accounts_list = [135,123,179,68,83,86]
 
 HTML_PAGE = """
 <!DOCTYPE html>
