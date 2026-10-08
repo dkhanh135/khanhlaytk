@@ -9,10 +9,10 @@ from flask import Flask, request, render_template_string, jsonify
 
 app = Flask(__name__)
 
-# Cấu trúc lưu trữ dữ liệu:
+# Cấu trúc dữ liệu lưu trữ:
 # { 
 #   "Mã cá nhân: XXX - Thiết bị: YYY": { 
-#       "line1_at": 1712345678.9,  # Cố định thời điểm gửi Dòng 1
+#       "line1_at": 1712345678.9, 
 #       "lines": ["Dòng 1", "Dòng 2", "Dòng 3"] 
 #   } 
 # }
@@ -338,16 +338,15 @@ HTML_PAGE = """
                 .then(res => res.json())
                 .then(res => {
                     if (res.status !== 'ok') return alert(res.message);
-                    const data = res.data;
-                    const keys = Object.keys(data);
-                    if (keys.length === 0) return alert('Chưa có dữ liệu nào!');
+                    const devices = res.data; // res.data giờ là Array cố định thứ tự
+                    if (!devices || devices.length === 0) return alert('Chưa có dữ liệu nào!');
 
                     let rowItems = [];
-                    for (let key of keys) {
-                        if (data[key] && data[key].length > rowIndex) {
-                            rowItems.push(data[key][rowIndex].text);
+                    devices.forEach(deviceObj => {
+                        if (deviceObj.lines && deviceObj.lines.length > rowIndex) {
+                            rowItems.push(deviceObj.lines[rowIndex].text);
                         }
-                    }
+                    });
 
                     if (rowItems.length === 0) {
                         return alert('Không tìm thấy dữ liệu ở Dòng ' + (rowIndex + 1) + '!');
@@ -403,16 +402,19 @@ HTML_PAGE = """
             });
         }
 
-        function copyAllIp(key) {
+        function copyAllIp(deviceKey) {
             const userCode = getUserCode();
             fetch('/api/data?user_code=' + encodeURIComponent(userCode), { headers: HEADERS })
                 .then(res => res.json())
                 .then(res => {
-                    if (res.status === 'ok' && res.data[key]) {
-                        const allText = res.data[key].map(item => item.text).join('\\n');
-                        copyToClipboard(allText).then(() => {
-                            alert('Đã copy toàn bộ nội dung!');
-                        });
+                    if (res.status === 'ok') {
+                        const targetDevice = res.data.find(d => d.device_key === deviceKey);
+                        if (targetDevice) {
+                            const allText = targetDevice.lines.map(item => item.text).join('\\n');
+                            copyToClipboard(allText).then(() => {
+                                alert('Đã copy toàn bộ nội dung!');
+                            });
+                        }
                     }
                 });
         }
@@ -475,14 +477,15 @@ HTML_PAGE = """
                         return;
                     }
 
-                    const data = res.data;
-                    if (Object.keys(data).length === 0) {
+                    const devices = res.data; // Nhận Mảng (Array)
+                    if (!devices || devices.length === 0) {
                         container.innerHTML = `<p style="color: #777;">Chưa có dữ liệu nào thuộc Mã cá nhân <b>"${userCode}"</b>.</p>`;
                         return;
                     }
 
                     let html = '';
-                    for (let deviceKey in data) {
+                    devices.forEach(deviceObj => {
+                        const deviceKey = deviceObj.device_key;
                         html += `<div class="device-box">
                             <div class="ip-header">
                                 📱 ${deviceKey}
@@ -490,7 +493,7 @@ HTML_PAGE = """
                             </div>
                             <table class="data-table">`;
                         
-                        data[deviceKey].forEach((item, index) => {
+                        deviceObj.lines.forEach((item, index) => {
                             const escapedItem = encodeURIComponent(item.text);
                             
                             let btn2FA = '';
@@ -514,7 +517,7 @@ HTML_PAGE = """
                         });
 
                         html += `</table></div>`;
-                    }
+                    });
                     container.innerHTML = html;
                 });
         }
@@ -547,14 +550,14 @@ def send_data():
     if content:
         key = f"Mã cá nhân: {user_code} - Thiết bị: {device_name}"
         
-        # CHỈ TẠO MỐC THỜI GIAN "line1_at" DUY NHẤT 1 LẦN KHI THIẾT BỊ LẦN ĐẦU GỬI DÒNG 1
+        # Chỉ tạo mốc thời gian "line1_at" lần đầu tiên máy gửi Dòng 1
         if key not in clipboard_data:
             clipboard_data[key] = {
-                'line1_at': time.time(), # Cố định thời điểm gửi Dòng 1
+                'line1_at': time.time(),
                 'lines': []
             }
         
-        # Thêm nội dung nối tiếp theo thứ tự: Lần 1 = Dòng 1, Lần 2 = Dòng 2, Lần 3 = Dòng 3
+        # Thêm nội dung nối tiếp theo thứ tự Dòng 1, Dòng 2, Dòng 3...
         clipboard_data[key]['lines'].append(content)
         
         return jsonify({'status': 'ok'})
@@ -570,25 +573,29 @@ def get_data():
     
     prefix = f"Mã cá nhân: {user_code} "
     
-    # 1. Lọc ra danh sách thiết bị theo Mã cá nhân
+    # 1. Lọc các máy theo Mã cá nhân
     matching_devices = []
     for k, item_data in clipboard_data.items():
         if k.startswith(prefix):
             matching_devices.append((k, item_data))
     
-    # 2. SẮP XẾP CHÍNH XÁC: So sánh mốc thời gian line1_at (Máy nào gửi Dòng 1 trước xếp trước)
+    # 2. Sắp xếp theo thời gian gửi Dòng 1 (Gửi trước xếp trước)
     matching_devices.sort(key=lambda x: x[1]['line1_at'])
     
-    # 3. Trả về dữ liệu đã sắp xếp đúng thứ tự
-    filtered_data = {}
+    # 3. CHUYỂN DẠNG TRẢ VỀ THÀNH MẢNG (ARRAY / LIST) ĐỂ TRÌNH DUYỆT KHÔNG TỰ SẮP XẾP LẠI
+    filtered_data = []
     for k, item_data in matching_devices:
-        filtered_data[k] = []
+        device_lines = []
         for text in item_data['lines']:
             totp_info = detect_2fa_in_text(text)
-            filtered_data[k].append({
+            device_lines.append({
                 'text': text,
                 'totp': totp_info
             })
+        filtered_data.append({
+            'device_key': k,
+            'lines': device_lines
+        })
     
     return jsonify({'status': 'ok', 'data': filtered_data})
 
