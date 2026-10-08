@@ -3,8 +3,8 @@ from flask import Flask, request, render_template_string, jsonify
 
 app = Flask(__name__)
 
-# Danh sách lưu trữ tài khoản theo thứ tự dòng (Mã số = STT 1, 2, 3...)
-accounts_list = [135,123,179,68,83,86]
+# Lưu trữ dữ liệu phân loại theo Mã cá nhân
+clipboard_data = {}
 
 HTML_PAGE = """
 <!DOCTYPE html>
@@ -12,179 +12,406 @@ HTML_PAGE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trạm Nhận Tài Khoản Theo Mã Số</title>
+    <title>Trạm Copy Dữ Liệu</title>
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 15px; background-color: #f4f6f9; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; }
-        input[type="number"], textarea { width: 100%; padding: 10px; font-size: 16px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 10px; }
-        textarea { height: 140px; font-family: monospace; }
-        button { padding: 10px 18px; font-size: 15px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: bold; }
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            max-width: 950px; 
+            margin: 20px auto; 
+            padding: 15px; 
+            background-color: #f4f6f9; 
+            position: relative;
+        }
+        
+        /* Ô nhập Mã số cá nhân ở góc trên bên phải */
+        .user-code-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #ffffff;
+            border: 2px solid #007bff;
+            padding: 6px 12px;
+            border-radius: 20px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            z-index: 1000;
+        }
+        .user-code-badge label {
+            font-size: 13px;
+            font-weight: bold;
+            color: #007bff;
+            white-space: nowrap;
+        }
+        .user-code-badge input {
+            width: 110px;
+            padding: 4px 8px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 12px;
+            outline: none;
+            text-align: center;
+            font-weight: bold;
+            color: #dc3545;
+        }
+        .user-code-badge input:focus {
+            border-color: #007bff;
+        }
+
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; margin-top: 15px; }
+        textarea { width: 100%; height: 80px; padding: 10px; font-size: 15px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; }
+        
+        button { padding: 8px 15px; font-size: 14px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: bold; }
         button:hover { opacity: 0.9; }
         .btn-success { background: #28a745; }
         .btn-danger { background: #dc3545; }
-        .result-box { background: #e9f7ef; border: 1px solid #28a745; padding: 15px; border-radius: 5px; font-family: monospace; font-size: 16px; color: #155724; display: none; margin-top: 15px; word-break: break-all; }
-        .error-box { background: #f8d7da; border: 1px solid #dc3545; padding: 15px; border-radius: 5px; color: #721c24; display: none; margin-top: 15px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 14px; }
-        th { background-color: #e9ecef; }
-        .code-badge { background: #007bff; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; }
+        .btn-refresh { background: #17a2b8; }
+        
+        .btn-row1 { background: #ffc107; color: #212529; }
+        .btn-row2 { background: #fd7e14; color: white; }
+        .btn-row3 { background: #20c997; color: white; }
+        
+        .btn-copy { background: #17a2b8; padding: 4px 10px; font-size: 12px; }
+        .btn-copy-all { background: #6c757d; font-size: 12px; float: right; padding: 4px 10px; }
+        
+        .toolbar { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; align-items: center; }
+        .toolbar-title { width: 100%; font-weight: bold; color: #495057; font-size: 14px; margin-bottom: 2px; margin-top: 5px; }
+        
+        .device-box { border: 1px solid #dcdcdc; margin-top: 15px; border-radius: 6px; background: #fff; overflow: hidden; }
+        .ip-header { background: #e9ecef; padding: 8px 12px; font-weight: bold; color: #333; border-bottom: 1px solid #ddd; }
+        
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table tr { border-bottom: 1px solid #eee; }
+        .data-table tr:last-child { border-bottom: none; }
+        .data-table tr:hover { background-color: #f8f9fa; }
+        .data-table td { padding: 8px 12px; font-size: 14px; vertical-align: middle; }
+        
+        .row-index { width: 60px; font-weight: bold; color: #6c757d; text-align: center; }
+        .text-cell { font-family: Consolas, monospace; font-size: 15px; color: #111; word-break: break-all; }
+        .action-cell { width: 90px; text-align: right; white-space: nowrap; }
+
+        @media (max-width: 600px) {
+            .user-code-badge { position: relative; top: 0; right: 0; margin-bottom: 10px; justify-content: center; }
+            .card { margin-top: 0; }
+        }
     </style>
 </head>
 <body>
 
-    <!-- PHẦN DÀNH CHO NGƯỜI DÙNG / ĐIỆN THOẠI -->
-    <div class="card">
-        <h2>📱 Lấy Tài Khoản (Dành cho Người Dùng)</h2>
-        <label><b>Nhập Mã Số của bạn (1, 2, 3...):</b></label>
-        <input type="number" id="user-code" placeholder="Nhập mã số của bạn (ví dụ: 1)" min="1">
-        <button onclick="getAccount()" class="btn-success">🔑 Lấy Tài Khoản</button>
-
-        <div id="result" class="result-box"></div>
-        <div id="error" class="error-box"></div>
+    <!-- Ô NHẬP MÃ CÁ NHÂN GÓC TRÊN BÊN PHẢI -->
+    <div class="user-code-badge">
+        <label for="user-code">🔑 Mã cá nhân (*):</label>
+        <input type="text" id="user-code" placeholder="Bắt buộc..." oninput="saveUserCode()">
     </div>
 
-    <!-- PHẦN DÀNH CHO MÁY TÍNH / ADMIN -->
     <div class="card">
-        <h2>💻 Quản Lý Danh Sách (Dành cho Admin)</h2>
-        <label><b>Dán danh sách tài khoản (Mỗi dòng 1 tài khoản):</b></label>
-        <textarea id="account-list" placeholder="Dán danh sách tài khoản vào đây, hệ thống sẽ TỰ ĐỘNG đánh mã số 1, 2, 3... từ trên xuống dưới:
+        <h2>📱 Gửi dữ liệu (Dành cho Điện thoại)</h2>
+        <textarea id="content" placeholder="Dán nội dung cần gửi vào đây..."></textarea><br><br>
+        <button onclick="sendData()" class="btn-success">Gửi lên Máy tính</button>
+        <span id="send-status" style="margin-left: 10px; font-weight: bold;"></span>
+    </div>
 
-user1@gmail.com|pass1
-user2@gmail.com|pass2
-user3@gmail.com|pass3"></textarea>
-        <button onclick="saveAccounts()">💾 Lưu Danh Sách</button>
-        <button onclick="clearAllData()" class="btn-danger" style="margin-left: 10px;">🗑️ Xóa Tất Cả</button>
+    <div class="card">
+        <h2>💻 Dữ liệu đã nhận (Dành cho Máy tính)</h2>
+        
+        <!-- Thanh công cụ Thao tác & Copy -->
+        <div class="toolbar">
+            <div class="toolbar-title">⚙️ Quản lý dữ liệu:</div>
+            <button onclick="loadData()" class="btn-refresh">🔄 Làm mới ngay</button>
+            <button onclick="clearAllData()" class="btn-danger">🗑️ Xóa dữ liệu của mã này</button>
 
-        <h3 style="margin-top: 20px;">📋 Bảng Mã Số Hiện Có Trộn Hệ Thống:</h3>
-        <div id="admin-table">Đang tải...</div>
+            <div class="toolbar-title">⚡ Copy hàng loạt:</div>
+            <button onclick="copyRowAllIp(0)" class="btn-row1">📋 Copy DÒNG 1 (Mới nhất)</button>
+            <button onclick="copyRowAllIp(1)" class="btn-row2">📋 Copy DÒNG 2</button>
+            <button onclick="copyRowAllIp(2)" class="btn-row3">📋 Copy DÒNG 3</button>
+        </div>
+
+        <div id="pc-view">Đang kiểm tra Mã cá nhân...</div>
     </div>
 
     <script>
-        // Lấy tài khoản theo Mã Số
-        function getAccount() {
+        const HEADERS = { 'ngrok-skip-browser-warning': 'true' };
+
+        // Tự động khôi phục Mã số cá nhân từ bộ nhớ trình duyệt
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedCode = localStorage.getItem('my_user_code');
+            if (savedCode) {
+                document.getElementById('user-code').value = savedCode;
+            }
+            loadData();
+        });
+
+        // Lưu mã cá nhân và làm mới giao diện
+        function saveUserCode() {
             const code = document.getElementById('user-code').value.trim();
-            const resBox = document.getElementById('result');
-            const errBox = document.getElementById('error');
+            localStorage.setItem('my_user_code', code);
+            loadData();
+        }
 
-            resBox.style.display = 'none';
-            errBox.style.display = 'none';
+        function getUserCode() {
+            return document.getElementById('user-code').value.trim();
+        }
 
-            if (!code) {
-                alert('Vui lòng nhập mã số!');
+        function copyToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                return navigator.clipboard.writeText(text);
+            } else {
+                let textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-999999px";
+                textArea.style.top = "-999999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                return new Promise((resolve, reject) => {
+                    document.execCommand('copy') ? resolve() : reject();
+                    textArea.remove();
+                });
+            }
+        }
+
+        // Copy dòng chỉ định thuộc Mã cá nhân hiện tại
+        function copyRowAllIp(rowIndex) {
+            const userCode = getUserCode();
+            if (!userCode) {
+                alert('⚠️ Bạn phải nhập Mã cá nhân ở góc trên bên phải trước!');
+                document.getElementById('user-code').focus();
                 return;
             }
 
-            fetch('/api/get-account', {
+            fetch('/api/data?user_code=' + encodeURIComponent(userCode), { headers: HEADERS })
+                .then(res => res.json())
+                .then(res => {
+                    if (res.status !== 'ok') return alert(res.message);
+                    const data = res.data;
+                    const ips = Object.keys(data);
+                    if (ips.length === 0) return alert('Chưa có dữ liệu nào!');
+
+                    let rowItems = [];
+                    for (let ip in data) {
+                        if (data[ip] && data[ip].length > rowIndex) {
+                            rowItems.push(data[ip][rowIndex]);
+                        }
+                    }
+
+                    if (rowItems.length === 0) {
+                        return alert('Không tìm thấy dữ liệu ở Dòng ' + (rowIndex + 1) + '!');
+                    }
+
+                    const combinedText = rowItems.join('\\n');
+                    copyToClipboard(combinedText).then(() => {
+                        alert('Đã copy Dòng ' + (rowIndex + 1) + ' của ' + rowItems.length + ' mục!');
+                    }).catch(() => {
+                        alert('Sao chép thất bại!');
+                    });
+                });
+        }
+
+        // Xóa toàn bộ dữ liệu thuộc Mã cá nhân này
+        function clearAllData() {
+            const userCode = getUserCode();
+            if (!userCode) {
+                alert('⚠️ Bạn phải nhập Mã cá nhân ở góc trên bên phải!');
+                document.getElementById('user-code').focus();
+                return;
+            }
+
+            if (confirm('Bạn có chắc muốn XÓA TẤT CẢ dữ liệu của Mã "' + userCode + '" không?')) {
+                fetch('/api/clear', { 
+                    method: 'POST', 
+                    headers: { 
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: 'user_code=' + encodeURIComponent(userCode)
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'ok') {
+                        loadData();
+                    } else {
+                        alert(data.message);
+                    }
+                });
+            }
+        }
+
+        // Copy lẻ 1 dòng
+        function copyText(text, btn) {
+            copyToClipboard(text).then(() => {
+                const originalText = btn.innerText;
+                btn.innerText = '✓ Đã copy';
+                btn.style.background = '#28a745';
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.style.background = '#17a2b8';
+                }, 1200);
+            });
+        }
+
+        // Copy tất cả nội dung của 1 thiết bị
+        function copyAllIp(key) {
+            const userCode = getUserCode();
+            fetch('/api/data?user_code=' + encodeURIComponent(userCode), { headers: HEADERS })
+                .then(res => res.json())
+                .then(res => {
+                    if (res.status === 'ok' && res.data[key]) {
+                        const allText = res.data[key].join('\\n');
+                        copyToClipboard(allText).then(() => {
+                            alert('Đã copy toàn bộ nội dung!');
+                        });
+                    }
+                });
+        }
+
+        // GỬI DỮ LIỆU: BẮT BUỘC PHẢI CÓ MÃ
+        function sendData() {
+            const text = document.getElementById('content').value.trim();
+            const userCode = getUserCode();
+
+            if (!userCode) {
+                alert('⚠️ BẮT BUỘC: Bạn phải nhập Mã cá nhân ở góc trên bên phải trước khi gửi!');
+                document.getElementById('user-code').focus();
+                return;
+            }
+
+            if (!text) {
+                alert('Vui lòng nhập nội dung cần gửi!');
+                return;
+            }
+
+            fetch('/send', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'code=' + encodeURIComponent(code)
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'ngrok-skip-browser-warning': 'true'
+                },
+                body: 'content=' + encodeURIComponent(text) + '&user_code=' + encodeURIComponent(userCode)
             })
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'ok') {
-                    resBox.innerHTML = '<b>✅ Tài khoản thuộc Mã số ' + code + ':</b><br><br>' + data.account;
-                    resBox.style.display = 'block';
+                    document.getElementById('content').value = '';
+                    const status = document.getElementById('send-status');
+                    status.style.color = '#28a745';
+                    status.innerText = '✅ Đã gửi thành công!';
+                    setTimeout(() => status.innerText = '', 2000);
+                    loadData();
                 } else {
-                    errBox.innerText = '❌ ' + data.message;
-                    errBox.style.display = 'block';
+                    alert('❌ Lỗi: ' + data.message);
                 }
             });
         }
 
-        // Lưu danh sách tài khoản từ Admin
-        function saveAccounts() {
-            const text = document.getElementById('account-list').value.trim();
-            if (!text) return alert('Vui lòng dán danh sách tài khoản!');
+        // LẤY DỮ LIỆU: BẮT BUỘC PHẢI CÓ MÃ
+        function loadData() {
+            const container = document.getElementById('pc-view');
+            const userCode = getUserCode();
 
-            fetch('/api/save-accounts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'data=' + encodeURIComponent(text)
-            })
-            .then(res => res.json())
-            .then(data => {
-                alert(data.message);
-                document.getElementById('account-list').value = '';
-                loadAdminData();
-            });
-        }
-
-        // Xóa sạch dữ liệu
-        function clearAllData() {
-            if (confirm('Bạn có chắc chắn muốn XÓA TẤT CẢ tài khoản không?')) {
-                fetch('/api/clear', { method: 'POST' })
-                    .then(res => res.json())
-                    .then(data => {
-                        loadAdminData();
-                    });
+            if (!userCode) {
+                container.innerHTML = '<p style="color: #dc3545; font-weight: bold; text-align: center; padding: 20px; background: #fff3f3; border: 1px solid #f5c6cb; border-radius: 6px;">⚠️ BẮT BUỘC NHẬP MÃ CÁ NHÂN Ở GÓC TRÊN BÊN PHẢI ĐỂ XEM / LẤY DỮ LIỆU!</p>';
+                return;
             }
-        }
 
-        // Tải danh sách Admin
-        function loadAdminData() {
-            fetch('/api/admin-data')
+            fetch('/api/data?user_code=' + encodeURIComponent(userCode), { headers: HEADERS })
                 .then(res => res.json())
-                .then(data => {
-                    const container = document.getElementById('admin-table');
-                    if (data.length === 0) {
-                        container.innerHTML = '<p style="color: #777;">Chưa có tài khoản nào trong hệ thống.</p>';
+                .then(res => {
+                    if (res.status !== 'ok') {
+                        container.innerHTML = `<p style="color: #dc3545;">⚠️ ${res.message}</p>`;
                         return;
                     }
 
-                    let html = '<table><tr><th style="width: 100px;">Mã Số</th><th>Nội Dung Tài Khoản</th></tr>';
-                    data.forEach((acc, index) => {
-                        html += `<tr>
-                            <td><span class="code-badge">Mã số ${index + 1}</span></td>
-                            <td>${acc}</td>
-                        </tr>`;
-                    });
-                    html += '</table>';
+                    const data = res.data;
+                    if (Object.keys(data).length === 0) {
+                        container.innerHTML = `<p style="color: #777;">Chưa có dữ liệu nào thuộc Mã cá nhân <b>"${userCode}"</b>.</p>`;
+                        return;
+                    }
+
+                    let html = '';
+                    for (let deviceKey in data) {
+                        html += `<div class="device-box">
+                            <div class="ip-header">
+                                🔴 ${deviceKey}
+                                <button class="btn-copy-all" onclick="copyAllIp('${deviceKey}')">📋 Copy tất cả mục này</button>
+                            </div>
+                            <table class="data-table">`;
+                        
+                        data[deviceKey].forEach((item, index) => {
+                            const escapedItem = encodeURIComponent(item);
+                            html += `<tr>
+                                <td class="row-index">Dòng ${index + 1}</td>
+                                <td class="text-cell">${item}</td>
+                                <td class="action-cell">
+                                    <button class="btn-copy" onclick="copyText(decodeURIComponent('${escapedItem}'), this)">Copy</button>
+                                </td>
+                            </tr>`;
+                        });
+
+                        html += `</table></div>`;
+                    }
                     container.innerHTML = html;
                 });
         }
 
-        loadAdminData();
+        setInterval(loadData, 2000);
     </script>
 </body>
 </html>
 """
 
+def get_client_ip():
+    if request.headers.get('X-Forwarded-For'):
+        return request.headers.get('X-Forwarded-For').split(',')[0].strip()
+    return request.remote_addr
+
 @app.route('/')
 def home():
     return render_template_string(HTML_PAGE)
 
-@app.route('/api/get-account', methods=['POST'])
-def get_account():
-    code_str = request.form.get('code', '').strip()
-    if not code_str or not code_str.isdigit():
-        return jsonify({'status': 'error', 'message': 'Vui lòng nhập mã số bằng chữ số!'})
+@app.route('/send', methods=['POST'])
+def send_data():
+    ip = get_client_ip()
+    content = request.form.get('content', '').strip()
+    user_code = request.form.get('user_code', '').strip()
     
-    code_num = int(code_str)
-    if code_num < 1 or code_num > len(accounts_list):
-        return jsonify({'status': 'error', 'message': f'Không tìm thấy Mã số {code_num}! (Hệ thống hiện chỉ có {len(accounts_list)} tài khoản)'})
+    if not user_code:
+        return jsonify({'status': 'error', 'message': 'Vui lòng nhập Mã cá nhân trước khi gửi!'})
     
-    # Mã số 1 lấy phần tử đầu tiên (index 0)
-    return jsonify({'status': 'ok', 'account': accounts_list[code_num - 1]})
+    if content:
+        key = f"Mã cá nhân: {user_code} ({ip})"
+        if key not in clipboard_data:
+            clipboard_data[key] = []
+        clipboard_data[key].insert(0, content)
+        return jsonify({'status': 'ok'})
+        
+    return jsonify({'status': 'error', 'message': 'Nội dung không được để trống!'})
 
-@app.route('/api/save-accounts', methods=['POST'])
-def save_accounts():
-    raw_data = request.form.get('data', '').strip()
-    if not raw_data:
-        return jsonify({'status': 'error', 'message': 'Dữ liệu trống!'})
-
-    # Tách từng dòng và đưa vào danh sách
-    lines = [line.strip() for line in raw_data.split('\n') if line.strip()]
-    accounts_list.extend(lines)
-
-    return jsonify({'status': 'ok', 'message': f'Đã nạp thành công {len(lines)} tài khoản! Mã số tự động đánh từ {len(accounts_list) - len(lines) + 1} đến {len(accounts_list)}.'})
-
-@app.route('/api/admin-data')
-def admin_data():
-    return jsonify(accounts_list)
+@app.route('/api/data')
+def get_data():
+    user_code = request.args.get('user_code', '').strip()
+    
+    if not user_code:
+        return jsonify({'status': 'error', 'message': 'Bạn phải nhập Mã cá nhân mới có thể xem/lấy dữ liệu!'})
+    
+    prefix = f"Mã cá nhân: {user_code} "
+    filtered_data = {k: v for k, v in clipboard_data.items() if k.startswith(prefix)}
+    
+    return jsonify({'status': 'ok', 'data': filtered_data})
 
 @app.route('/api/clear', methods=['POST'])
 def clear_data():
-    accounts_list.clear()
+    user_code = request.form.get('user_code', '').strip()
+    
+    if not user_code:
+        return jsonify({'status': 'error', 'message': 'Vui lòng nhập Mã cá nhân!'})
+    
+    prefix = f"Mã cá nhân: {user_code} "
+    keys_to_delete = [k for k in clipboard_data if k.startswith(prefix)]
+    for k in keys_to_delete:
+        del clipboard_data[k]
+        
     return jsonify({'status': 'ok'})
 
 if __name__ == '__main__':
