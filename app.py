@@ -9,8 +9,13 @@ from flask import Flask, request, render_template_string, jsonify
 
 app = Flask(__name__)
 
-# Lưu trữ dữ liệu dạng: 
-# { "Mã cá nhân: XXX - Thiết bị: YYY": { "updated_at": 1712345678, "lines": ["Dòng 1", "Dòng 2"] } }
+# Cấu trúc lưu trữ dữ liệu:
+# { 
+#   "Mã cá nhân: XXX - Thiết bị: YYY": { 
+#       "line1_at": 1712345678.9,  # Cố định thời điểm gửi Dòng 1
+#       "lines": ["Dòng 1", "Dòng 2", "Dòng 3"] 
+#   } 
+# }
 clipboard_data = {}
 
 # =========================================================================
@@ -253,7 +258,7 @@ HTML_PAGE = """
             <button onclick="loadData()" class="btn-refresh">🔄 Làm mới ngay</button>
             <button onclick="clearAllData()" class="btn-danger">🗑️ Xóa dữ liệu của mã này</button>
 
-            <div class="toolbar-title">⚡ Copy hàng loạt (Theo thứ tự gửi):</div>
+            <div class="toolbar-title">⚡ Copy hàng loạt (Theo thứ tự gửi Dòng 1):</div>
             <button onclick="copyRowAllIp(0)" class="btn-row1">📋 Copy DÒNG 1 (Theo thứ tự gửi)</button>
             <button onclick="copyRowAllIp(1)" class="btn-row2">📋 Copy DÒNG 2</button>
             <button onclick="copyRowAllIp(2)" class="btn-row3">📋 Copy DÒNG 3</button>
@@ -334,13 +339,13 @@ HTML_PAGE = """
                 .then(res => {
                     if (res.status !== 'ok') return alert(res.message);
                     const data = res.data;
-                    const ips = Object.keys(data);
-                    if (ips.length === 0) return alert('Chưa có dữ liệu nào!');
+                    const keys = Object.keys(data);
+                    if (keys.length === 0) return alert('Chưa có dữ liệu nào!');
 
                     let rowItems = [];
-                    for (let ip in data) {
-                        if (data[ip] && data[ip].length > rowIndex) {
-                            rowItems.push(data[ip][rowIndex].text);
+                    for (let key of keys) {
+                        if (data[key] && data[key].length > rowIndex) {
+                            rowItems.push(data[key][rowIndex].text);
                         }
                     }
 
@@ -350,7 +355,7 @@ HTML_PAGE = """
 
                     const combinedText = rowItems.join('\\n');
                     copyToClipboard(combinedText).then(() => {
-                        alert('Đã copy Dòng ' + (rowIndex + 1) + ' của ' + rowItems.length + ' máy theo đúng thứ tự gửi!');
+                        alert('Đã copy Dòng ' + (rowIndex + 1) + ' của ' + rowItems.length + ' máy theo đúng thứ tự gửi Dòng 1!');
                     }).catch(() => {
                         alert('Sao chép thất bại!');
                     });
@@ -458,7 +463,7 @@ HTML_PAGE = """
             const userCode = getUserCode();
 
             if (!userCode) {
-                container.innerHTML = '<p style="color: #dc3545; font-weight: bold; text-align: center; padding: 20px; background: #fff3f3; border: 1px solid #f5c6cb; border-radius: 6px;">⚠️ BẮT BUỘC NHẬP MÃ CÁ NHÂN Ở GÓC TRÊN BÊN PHẢI ĐỂ XEM / LẤY DỮ LIỆU!</p>';
+                container.innerHTML = '<p style="color: #dc3545; font-weight: bold; text-align: center; padding: 20px; background: #fff3f3; border: 1px solid #f5c6cb; border-radius: 6px;">⚠️ BẮT BUỘC NHẬP MÃ CÁ NHÂN Ó GÓC TRÊN BÊN PHẢI ĐỂ XEM / LẤY DỮ LIỆU!</p>';
                 return;
             }
 
@@ -542,16 +547,15 @@ def send_data():
     if content:
         key = f"Mã cá nhân: {user_code} - Thiết bị: {device_name}"
         
-        # Tạo cấu trúc lưu trữ gồm mốc thời gian cập nhật Dòng 1 và danh sách dòng
+        # CHỈ TẠO MỐC THỜI GIAN "line1_at" DUY NHẤT 1 LẦN KHI THIẾT BỊ LẦN ĐẦU GỬI DÒNG 1
         if key not in clipboard_data:
             clipboard_data[key] = {
-                'updated_at': time.time(),
+                'line1_at': time.time(), # Cố định thời điểm gửi Dòng 1
                 'lines': []
             }
         
-        # Chèn nội dung mới nhất vào vị trí Dòng 1 và cập nhật thời gian
-        clipboard_data[key]['lines'].insert(0, content)
-        clipboard_data[key]['updated_at'] = time.time()
+        # Thêm nội dung nối tiếp theo thứ tự: Lần 1 = Dòng 1, Lần 2 = Dòng 2, Lần 3 = Dòng 3
+        clipboard_data[key]['lines'].append(content)
         
         return jsonify({'status': 'ok'})
         
@@ -566,16 +570,16 @@ def get_data():
     
     prefix = f"Mã cá nhân: {user_code} "
     
-    # 1. Lọc ra các máy thuộc Mã cá nhân này
+    # 1. Lọc ra danh sách thiết bị theo Mã cá nhân
     matching_devices = []
     for k, item_data in clipboard_data.items():
         if k.startswith(prefix):
             matching_devices.append((k, item_data))
     
-    # 2. Sắp xếp danh sách máy: Máy gửi Dòng 1 TRƯỚC xếp trước, máy gửi SAU xếp sau
-    matching_devices.sort(key=lambda x: x[1]['updated_at'])
+    # 2. SẮP XẾP CHÍNH XÁC: So sánh mốc thời gian line1_at (Máy nào gửi Dòng 1 trước xếp trước)
+    matching_devices.sort(key=lambda x: x[1]['line1_at'])
     
-    # 3. Chuẩn hóa dữ liệu trả về cho giao diện Web
+    # 3. Trả về dữ liệu đã sắp xếp đúng thứ tự
     filtered_data = {}
     for k, item_data in matching_devices:
         filtered_data[k] = []
