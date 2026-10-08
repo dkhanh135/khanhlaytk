@@ -9,7 +9,8 @@ from flask import Flask, request, render_template_string, jsonify
 
 app = Flask(__name__)
 
-# Lưu trữ dữ liệu dạng: { "Mã cá nhân: XXX - Tên Thiết Bị": ["Nội dung 1", "Nội dung 2"] }
+# Lưu trữ dữ liệu dạng: 
+# { "Mã cá nhân: XXX - Thiết bị: YYY": { "updated_at": 1712345678, "lines": ["Dòng 1", "Dòng 2"] } }
 clipboard_data = {}
 
 # =========================================================================
@@ -252,8 +253,8 @@ HTML_PAGE = """
             <button onclick="loadData()" class="btn-refresh">🔄 Làm mới ngay</button>
             <button onclick="clearAllData()" class="btn-danger">🗑️ Xóa dữ liệu của mã này</button>
 
-            <div class="toolbar-title">⚡ Copy hàng loạt:</div>
-            <button onclick="copyRowAllIp(0)" class="btn-row1">📋 Copy DÒNG 1 (Mới nhất)</button>
+            <div class="toolbar-title">⚡ Copy hàng loạt (Theo thứ tự gửi):</div>
+            <button onclick="copyRowAllIp(0)" class="btn-row1">📋 Copy DÒNG 1 (Theo thứ tự gửi)</button>
             <button onclick="copyRowAllIp(1)" class="btn-row2">📋 Copy DÒNG 2</button>
             <button onclick="copyRowAllIp(2)" class="btn-row3">📋 Copy DÒNG 3</button>
         </div>
@@ -270,7 +271,6 @@ HTML_PAGE = """
                 document.getElementById('user-code').value = savedCode;
             }
 
-            // Tự động tạo hoặc lấy Tên Thiết Bị riêng cho điện thoại
             let savedDevice = localStorage.getItem('my_device_name');
             if (!savedDevice) {
                 savedDevice = 'Máy ' + Math.floor(1000 + Math.random() * 9000);
@@ -350,7 +350,7 @@ HTML_PAGE = """
 
                     const combinedText = rowItems.join('\\n');
                     copyToClipboard(combinedText).then(() => {
-                        alert('Đã copy Dòng ' + (rowIndex + 1) + ' của ' + rowItems.length + ' mục!');
+                        alert('Đã copy Dòng ' + (rowIndex + 1) + ' của ' + rowItems.length + ' máy theo đúng thứ tự gửi!');
                     }).catch(() => {
                         alert('Sao chép thất bại!');
                     });
@@ -458,7 +458,7 @@ HTML_PAGE = """
             const userCode = getUserCode();
 
             if (!userCode) {
-                container.innerHTML = '<p style="color: #dc3545; font-weight: bold; text-align: center; padding: 20px; background: #fff3f3; border: 1px solid #f5c6cb; border-radius: 6px;">⚠️ BẮT BUỘC NHẬP MÃ CÁ NHÂN Ó GÓC TRÊN BÊN PHẢI ĐỂ XEM / LẤY DỮ LIỆU!</p>';
+                container.innerHTML = '<p style="color: #dc3545; font-weight: bold; text-align: center; padding: 20px; background: #fff3f3; border: 1px solid #f5c6cb; border-radius: 6px;">⚠️ BẮT BUỘC NHẬP MÃ CÁ NHÂN Ở GÓC TRÊN BÊN PHẢI ĐỂ XEM / LẤY DỮ LIỆU!</p>';
                 return;
             }
 
@@ -541,9 +541,18 @@ def send_data():
     
     if content:
         key = f"Mã cá nhân: {user_code} - Thiết bị: {device_name}"
+        
+        # Tạo cấu trúc lưu trữ gồm mốc thời gian cập nhật Dòng 1 và danh sách dòng
         if key not in clipboard_data:
-            clipboard_data[key] = []
-        clipboard_data[key].insert(0, content)
+            clipboard_data[key] = {
+                'updated_at': time.time(),
+                'lines': []
+            }
+        
+        # Chèn nội dung mới nhất vào vị trí Dòng 1 và cập nhật thời gian
+        clipboard_data[key]['lines'].insert(0, content)
+        clipboard_data[key]['updated_at'] = time.time()
+        
         return jsonify({'status': 'ok'})
         
     return jsonify({'status': 'error', 'message': 'Nội dung không được để trống!'})
@@ -556,17 +565,26 @@ def get_data():
         return jsonify({'status': 'error', 'message': 'Bạn phải nhập Mã cá nhân mới có thể xem/lấy dữ liệu!'})
     
     prefix = f"Mã cá nhân: {user_code} "
-    filtered_data = {}
     
-    for k, text_list in clipboard_data.items():
+    # 1. Lọc ra các máy thuộc Mã cá nhân này
+    matching_devices = []
+    for k, item_data in clipboard_data.items():
         if k.startswith(prefix):
-            filtered_data[k] = []
-            for text in text_list:
-                totp_info = detect_2fa_in_text(text)
-                filtered_data[k].append({
-                    'text': text,
-                    'totp': totp_info
-                })
+            matching_devices.append((k, item_data))
+    
+    # 2. Sắp xếp danh sách máy: Máy gửi Dòng 1 TRƯỚC xếp trước, máy gửi SAU xếp sau
+    matching_devices.sort(key=lambda x: x[1]['updated_at'])
+    
+    # 3. Chuẩn hóa dữ liệu trả về cho giao diện Web
+    filtered_data = {}
+    for k, item_data in matching_devices:
+        filtered_data[k] = []
+        for text in item_data['lines']:
+            totp_info = detect_2fa_in_text(text)
+            filtered_data[k].append({
+                'text': text,
+                'totp': totp_info
+            })
     
     return jsonify({'status': 'ok', 'data': filtered_data})
 
