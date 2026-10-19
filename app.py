@@ -154,12 +154,12 @@ HTML_PAGE = """
         .btn-row2 { background: #fd7e14; color: white; }
         .btn-row3 { background: #20c997; color: white; }
         
-        /* ⚡ TỐI ƯU CỘT HÀNH ĐỘNG CỰC KỲ GỌN ĐỂ NHƯỜNG CHỖ CHO CHỮ */
+        /* ⚡ TĂNG KÍCH THƯỚC NÚT COPY TO GẤP ĐÔI */
         .btn-copy { 
             background: #17a2b8 !important; 
-            padding: 2px 5px !important; 
-            font-size: 10px !important; 
-            border-radius: 3px !important; 
+            padding: 8px 16px !important; 
+            font-size: 14px !important; 
+            border-radius: 6px !important; 
             border: none !important; 
             color: white !important; 
             cursor: pointer !important; 
@@ -168,41 +168,40 @@ HTML_PAGE = """
             min-width: unset !important;
             flex: unset !important;
             display: inline-block !important;
-            line-height: 1.1 !important;
+            line-height: 1.3 !important;
         }
-        .btn-copy-all { background: #6c757d; font-size: 11px; padding: 3px 6px; border-radius: 3px; color: white; border: none; float: right; }
+        .btn-copy-all { background: #6c757d; font-size: 12px; padding: 4px 8px; border-radius: 4px; color: white; border: none; float: right; }
         
-        /* ⚡ THU NHỎ NÚT 2FA TỐI ĐA */
+        /* Nút 2FA */
         .btn-2fa-inline {
             background: #28a745 !important;
             color: white !important;
             border: none !important;
-            padding: 2px 5px !important;
-            font-size: 10px !important;
-            border-radius: 3px !important;
+            padding: 6px 10px !important;
+            font-size: 13px !important;
+            border-radius: 5px !important;
             cursor: pointer !important;
             font-weight: bold !important;
             display: inline-flex !important;
             align-items: center !important;
-            gap: 2px !important;
+            gap: 4px !important;
             width: auto !important; 
             min-width: unset !important;
             flex: unset !important;
-            line-height: 1.1 !important;
         }
         .btn-2fa-inline:hover {
             background: #218838 !important;
         }
         .code-2fa-num {
             font-family: monospace;
-            font-size: 10px;
-            letter-spacing: 0.3px;
+            font-size: 13px;
+            letter-spacing: 0.5px;
             background: rgba(0,0,0,0.2);
-            padding: 1px 2px;
-            border-radius: 2px;
+            padding: 1px 3px;
+            border-radius: 3px;
         }
         .time-2fa-left {
-            font-size: 8px;
+            font-size: 10px;
             opacity: 0.9;
         }
 
@@ -213,19 +212,19 @@ HTML_PAGE = """
         .device-box { border: 1px solid #dcdcdc; margin-top: 15px; border-radius: 6px; background: #fff; overflow: hidden; }
         .ip-header { background: #e9ecef; padding: 8px 12px; font-weight: bold; color: #333; border-bottom: 1px solid #ddd; font-size: 14px; }
         
-        .data-table { width: 100%; border-collapse: collapse; table-layout: fixed; } /* Ép bảng tối ưu không gian */
+        .data-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .data-table tr { border-bottom: 1px solid #eee; }
         .data-table tr:last-child { border-bottom: none; }
-        .data-table td { padding: 6px 4px; vertical-align: middle; }
+        .data-table td { padding: 10px 6px; vertical-align: middle; }
         
-        .row-index { width: 45px; font-weight: bold; color: #6c757d; text-align: center; font-size: 11px; }
+        .row-index { width: 45px; font-weight: bold; color: #6c757d; text-align: center; font-size: 12px; }
         .text-cell { 
             font-family: Consolas, monospace; 
-            font-size: 13px; 
+            font-size: 14px; 
             color: #111; 
             word-break: break-all; 
             overflow-wrap: break-word;
-        } /* Tối đa hóa chiều rộng hiển thị nội dung chữ */
+        }
         .action-cell { text-align: right; white-space: nowrap; width: 1%; }
 
         @media (min-width: 768px) {
@@ -266,376 +265,4 @@ HTML_PAGE = """
         <div class="toolbar">
             <div class="toolbar-title">⚙️ Quản lý:</div>
             <button onclick="loadData()" class="btn-refresh">🔄 Làm mới</button>
-            <button onclick="clearAllData()" class="btn-danger">🗑️ Xóa dữ liệu</button>
-
-            <div class="toolbar-title">⚡ Copy hàng loạt:</div>
-            <button onclick="copyRowAllIp(0)" class="btn-row1">📋 Copy DÒNG 1</button>
-            <button onclick="copyRowAllIp(1)" class="btn-row2">📋 Copy DÒNG 2</button>
-            <button onclick="copyRowAllIp(2)" class="btn-row3">📋 Copy DÒNG 3</button>
-        </div>
-
-        <div id="pc-view">Đang kiểm tra Mã cá nhân...</div>
-    </div>
-
-    <script>
-        const HEADERS = { 'ngrok-skip-browser-warning': 'true' };
-
-        window.addEventListener('DOMContentLoaded', () => {
-            const savedCode = localStorage.getItem('my_user_code');
-            if (savedCode) {
-                document.getElementById('user-code').value = savedCode;
-            }
-
-            let savedDevice = localStorage.getItem('my_device_name');
-            if (!savedDevice) {
-                savedDevice = 'Máy ' + Math.floor(1000 + Math.random() * 9000);
-                localStorage.setItem('my_device_name', savedDevice);
-            }
-            document.getElementById('device-name').value = savedDevice;
-
-            loadData();
-        });
-
-        function handleGlobalKey(event) {
-            if (event.key === 'Delete' || event.keyCode === 46) {
-                const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
-                if (activeTag !== 'textarea' && activeTag !== 'input') {
-                    event.preventDefault();
-                    clearAllData();
-                }
-            }
-        }
-
-        function saveUserCode() {
-            const code = document.getElementById('user-code').value.trim();
-            localStorage.setItem('my_user_code', code);
-            loadData();
-        }
-
-        function saveDeviceName() {
-            const name = document.getElementById('device-name').value.trim();
-            if (name) {
-                localStorage.setItem('my_device_name', name);
-            }
-        }
-
-        function getUserCode() {
-            return document.getElementById('user-code').value.trim();
-        }
-
-        function getDeviceName() {
-            return document.getElementById('device-name').value.trim() || 'Máy ẩn danh';
-        }
-
-        function handleKeyPress(event) {
-            if (event.key === 'Enter' || event.keyCode === 13) {
-                if (event.shiftKey) {
-                    return; 
-                }
-                event.preventDefault(); 
-                setTimeout(() => {
-                    sendData();
-                }, 10);
-            }
-        }
-
-        function copyToClipboard(text) {
-            if (navigator.clipboard && window.isSecureContext) {
-                return navigator.clipboard.writeText(text);
-            } else {
-                let textArea = document.createElement("textarea");
-                textArea.value = text;
-                textArea.style.position = "fixed";
-                textArea.style.left = "-999999px";
-                textArea.style.top = "-999999px";
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                return new Promise((resolve, reject) => {
-                    document.execCommand('copy') ? resolve() : reject();
-                    textArea.remove();
-                });
-            }
-        }
-
-        function copyRowAllIp(rowIndex) {
-            const userCode = getUserCode();
-            if (!userCode) {
-                alert('⚠️ Bạn phải nhập Mã cá nhân ở phía trên trước!');
-                document.getElementById('user-code').focus();
-                return;
-            }
-
-            fetch('/api/data?user_code=' + encodeURIComponent(userCode), { headers: HEADERS })
-                .then(res => res.json())
-                .then(res => {
-                    if (res.status !== 'ok') return alert(res.message);
-                    const devices = res.data;
-                    if (!devices || devices.length === 0) return alert('Chưa có dữ liệu nào!');
-
-                    let rowItems = [];
-                    devices.forEach(deviceObj => {
-                        if (deviceObj.lines && deviceObj.lines.length > rowIndex) {
-                            rowItems.push(deviceObj.lines[rowIndex].text);
-                        }
-                    });
-
-                    if (rowItems.length === 0) {
-                        return alert('Không tìm thấy dữ liệu ở Dòng ' + (rowIndex + 1) + '!');
-                    }
-
-                    const combinedText = rowItems.join('\\n');
-                    copyToClipboard(combinedText).then(() => {
-                        alert('Đã copy Dòng ' + (rowIndex + 1) + ' của ' + rowItems.length + ' máy!');
-                    }).catch(() => {
-                        alert('Sao chép thất bại!');
-                    });
-                });
-        }
-
-        function clearAllData() {
-            const userCode = getUserCode();
-            if (!userCode) {
-                alert('⚠️ Bạn phải nhập Mã cá nhân!');
-                document.getElementById('user-code').focus();
-                return;
-            }
-
-            if (confirm('⚠️ Bạn có chắc muốn XÓA TẤT CẢ dữ liệu của Mã "' + userCode + '" không?')) {
-                fetch('/api/clear', { 
-                    method: 'POST', 
-                    headers: { 
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'ngrok-skip-browser-warning': 'true'
-                    },
-                    body: 'user_code=' + encodeURIComponent(userCode)
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === 'ok') {
-                        loadData();
-                    } else {
-                        alert(data.message);
-                    }
-                });
-            }
-        }
-
-        function copyText(text, btn) {
-            copyToClipboard(text).then(() => {
-                const originalText = btn.innerHTML;
-                btn.innerText = '✓';
-                const originalBg = btn.style.background;
-                btn.style.background = '#17a2b8';
-                setTimeout(() => {
-                    btn.innerHTML = originalText;
-                    btn.style.background = originalBg;
-                }, 1200);
-            });
-        }
-
-        function copyAllIp(deviceKey) {
-            const userCode = getUserCode();
-            fetch('/api/data?user_code=' + encodeURIComponent(userCode), { headers: HEADERS })
-                .then(res => res.json())
-                .then(res => {
-                    if (res.status === 'ok') {
-                        const targetDevice = res.data.find(d => d.device_key === deviceKey);
-                        if (targetDevice) {
-                            const allText = targetDevice.lines.map(item => item.text).join('\\n');
-                            copyToClipboard(allText).then(() => {
-                                alert('Đã copy toàn bộ nội dung!');
-                            });
-                        }
-                    }
-                });
-        }
-
-        function sendData() {
-            const contentBox = document.getElementById('content');
-            const text = contentBox.value.trim();
-            const userCode = getUserCode();
-            const deviceName = getDeviceName();
-
-            if (!userCode) {
-                alert('⚠️ BẮT BUỘC: Bạn phải nhập Mã cá nhân trước khi gửi!');
-                document.getElementById('user-code').focus();
-                return;
-            }
-
-            if (!text) {
-                contentBox.value = ''; 
-                return;
-            }
-
-            fetch('/send', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'ngrok-skip-browser-warning': 'true'
-                },
-                body: 'content=' + encodeURIComponent(text) + 
-                      '&user_code=' + encodeURIComponent(userCode) + 
-                      '&device_name=' + encodeURIComponent(deviceName)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'ok') {
-                    contentBox.value = ''; 
-                    const status = document.getElementById('send-status');
-                    status.style.color = '#28a745';
-                    status.innerText = '✅ Đã gửi thành công!';
-                    setTimeout(() => status.innerText = '', 2000);
-                    loadData();
-                } else {
-                    alert('❌ Lỗi: ' + data.message);
-                }
-            });
-        }
-
-        function loadData() {
-            const container = document.getElementById('pc-view');
-            const userCode = getUserCode();
-
-            if (!userCode) {
-                container.innerHTML = '<p style="color: #dc3545; font-weight: bold; text-align: center; padding: 15px; background: #fff3f3; border: 1px solid #f5c6cb; border-radius: 6px; font-size: 14px;">⚠️ VUI LÒNG NHẬP MÃ CÁ NHÂN ĐỂ XEM DỮ LIỆU!</p>';
-                return;
-            }
-
-            fetch('/api/data?user_code=' + encodeURIComponent(userCode), { headers: HEADERS })
-                .then(res => res.json())
-                .then(res => {
-                    if (res.status !== 'ok') {
-                        container.innerHTML = `<p style="color: #dc3545;">⚠️ ${res.message}</p>`;
-                        return;
-                    }
-
-                    const devices = res.data;
-                    if (!devices || devices.length === 0) {
-                        container.innerHTML = `<p style="color: #777; font-size: 14px;">Chưa có dữ liệu nào thuộc Mã cá nhân <b>"${userCode}"</b>.</p>`;
-                        return;
-                    }
-
-                    let html = '';
-                    devices.forEach(deviceObj => {
-                        const deviceKey = deviceObj.device_key;
-                        html += `<div class="device-box">
-                            <div class="ip-header">
-                                📱 ${deviceKey}
-                                <button class="btn-copy-all" onclick="copyAllIp('${deviceKey}')">📋 Copy tất cả</button>
-                            </div>
-                            <table class="data-table">`;
-                        
-                        deviceObj.lines.forEach((item, index) => {
-                            const escapedItem = encodeURIComponent(item.text);
-                            
-                            let btn2FA = '';
-                            if (item.totp) {
-                                btn2FA = `
-                                    <button class="btn-2fa-inline" onclick="copyText('${item.totp.code}', this)" title="Copy 2FA">
-                                        ⚡ <span class="code-2fa-num">${item.totp.code}</span>
-                                        <span class="time-2fa-left">(${item.totp.time_left}s)</span>
-                                    </button>
-                                `;
-                            }
-
-                            html += `<tr>
-                                <td class="row-index">Dòng ${index + 1}</td>
-                                <td class="text-cell">${item.text}</td>
-                                <td class="action-cell">
-                                    <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
-                                        ${btn2FA}
-                                        <button class="btn-copy" onclick="copyText(decodeURIComponent('${escapedItem}'), this)">Copy</button>
-                                    </div>
-                                </td>
-                            </tr>`;
-                        });
-
-                        html += `</table></div>`;
-                    });
-                    container.innerHTML = html;
-                });
-        }
-
-        setInterval(loadData, 2000);
-    </script>
-</body>
-</html>
-"""
-
-def get_client_ip():
-    if request.headers.get('X-Forwarded-For'):
-        return request.headers.get('X-Forwarded-For').split(',')[0].strip()
-    return request.remote_addr
-
-@app.route('/')
-def home():
-    return render_template_string(HTML_PAGE)
-
-@app.route('/send', methods=['POST'])
-def send_data():
-    ip = get_client_ip()
-    content = request.form.get('content', '').strip()
-    user_code = request.form.get('user_code', '').strip()
-    device_name = request.form.get('device_name', '').strip() or f"Máy-{ip}"
-    
-    if not user_code:
-        return jsonify({'status': 'error', 'message': 'Vui lòng nhập Mã cá nhân trước khi gửi!'})
-    
-    if content:
-        key = f"Mã cá nhân: {user_code} - Thiết bị: {device_name}"
-        
-        if key not in clipboard_data:
-            clipboard_data[key] = {
-                'line1_at': time.time(),
-                'lines': []
-            }
-        
-        clipboard_data[key]['lines'].append(content)
-        return jsonify({'status': 'ok'})
-        
-    return jsonify({'status': 'error', 'message': 'Nội dung không được để trống!'})
-
-@app.route('/api/data')
-def get_data():
-    user_code = request.args.get('user_code', '').strip()
-    
-    if not user_code:
-        return jsonify({'status': 'error', 'message': 'Bạn phải nhập Mã cá nhân mới có thể xem/lấy dữ liệu!'})
-    
-    prefix = f"Mã cá nhân: {user_code} "
-    
-    matching_devices = []
-    for k, item_data in clipboard_data.items():
-        if k.startswith(prefix):
-            matching_devices.append((k, item_data))
-    
-    matching_devices.sort(key=lambda x: x[1]['line1_at'])
-    
-    filtered_data = []
-    for k, item_data in matching_devices:
-        device_lines = []
-        for text in item_data['lines']:
-            totp_info = detect_2fa_in_text(text)
-            device_lines.append({
-                'text': text,
-                'totp': totp_info
-            })
-        filtered_data.append({
-            'device_key': k,
-            'lines': device_lines
-        })
-    
-    return jsonify({'status': 'ok', 'data': filtered_data})
-
-@app.route('/api/clear', methods=['POST'])
-def clear_data():
-    user_code = request.form.get('user_code', '').strip()
-    
-    if not user_code:
-        return jsonify({'status': 'error', 'message': 'Vui lòng nhập Mã cá nhân!'})
-    
-    prefix = f"Mã cá nhân: {user_code} "
-    keys_to_delete = [k for k in clipboard_data if k.startswith(prefix)]
-    for k in keys_to_delete:
-        del clipboard_data
+            <button onclick="clearAllData()" class="btn-danger">
