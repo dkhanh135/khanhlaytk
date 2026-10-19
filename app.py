@@ -94,7 +94,6 @@ HTML_PAGE = """
             background-color: #f4f6f9; 
         }
         
-        /* Ô nhập Mã cá nhân góc trên bên phải */
         .user-code-badge {
             background: #ffffff;
             border: 2px solid #007bff;
@@ -165,28 +164,28 @@ HTML_PAGE = """
         .btn-row2 { background: #fd7e14; color: white; }
         .btn-row3 { background: #20c997; color: white; }
         
-        /* ĐÃ LÀM TO NÚT COPY DÒNG */
+        /* ⚡ ĐÃ LÀM TO NÚT COPY DÒNG (RỘNG VÀ DỄ BẤM HƠN) */
         .btn-copy { 
             background: #17a2b8; 
-            padding: 10px 16px; 
-            font-size: 15px; 
+            padding: 12px 22px; 
+            font-size: 16px; 
             border-radius: 6px; 
             border: none; 
             color: white; 
             cursor: pointer; 
             font-weight: bold; 
-            width: auto; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-width: 100px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
         }
         .btn-copy-all { background: #6c757d; font-size: 12px; padding: 4px 8px; border-radius: 4px; color: white; border: none; float: right; }
         
-        /* ĐÃ LÀM TO NÚT 2FA */
+        /* Nút 2FA cùng dòng */
         .btn-2fa-inline {
             background: #28a745;
             color: white;
             border: none;
-            padding: 10px 14px;
-            font-size: 15px;
+            padding: 12px 18px;
+            font-size: 16px;
             border-radius: 6px;
             cursor: pointer;
             font-weight: bold;
@@ -194,7 +193,7 @@ HTML_PAGE = """
             align-items: center;
             gap: 6px;
             margin-right: 6px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
         }
         .btn-2fa-inline:hover {
             background: #218838;
@@ -202,7 +201,7 @@ HTML_PAGE = """
         }
         .code-2fa-num {
             font-family: monospace;
-            font-size: 16px;
+            font-size: 17px;
             letter-spacing: 1.5px;
             background: rgba(0,0,0,0.25);
             padding: 2px 6px;
@@ -223,7 +222,7 @@ HTML_PAGE = """
         .data-table { width: 100%; border-collapse: collapse; }
         .data-table tr { border-bottom: 1px solid #eee; }
         .data-table tr:last-child { border-bottom: none; }
-        .data-table td { padding: 12px 8px; font-size: 14px; vertical-align: middle; }
+        .data-table td { padding: 14px 8px; vertical-align: middle; }
         
         .row-index { width: 50px; font-weight: bold; color: #6c757d; text-align: center; font-size: 14px; }
         .text-cell { font-family: Consolas, monospace; font-size: 15px; color: #111; word-break: break-all; }
@@ -519,7 +518,7 @@ HTML_PAGE = """
                                 <td class="row-index">Dòng ${index + 1}</td>
                                 <td class="text-cell">${item.text}</td>
                                 <td class="action-cell">
-                                    <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
+                                    <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
                                         ${btn2FA}
                                         <button class="btn-copy" onclick="copyText(decodeURIComponent('${escapedItem}'), this)">Copy</button>
                                     </div>
