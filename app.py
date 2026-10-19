@@ -9,7 +9,7 @@ from flask import Flask, request, render_template_string, jsonify
 
 app = Flask(__name__)
 
-# Cấu trúc dữ liệu lưu trữ:
+# Cấu trúc lưu trữ dữ liệu:
 # { 
 #   "Mã cá nhân: XXX - Thiết bị: YYY": { 
 #       "line1_at": 1712345678.9, 
@@ -85,19 +85,17 @@ HTML_PAGE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trạm Copy Dữ Liệu & 2FA</title>
     <style>
+        * { box-sizing: border-box; }
         body { 
             font-family: 'Segoe UI', Arial, sans-serif; 
             max-width: 980px; 
-            margin: 20px auto; 
-            padding: 15px; 
+            margin: 0 auto; 
+            padding: 10px; 
             background-color: #f4f6f9; 
-            position: relative;
         }
         
+        /* Ô nhập Mã cá nhân góc trên bên phải */
         .user-code-badge {
-            position: absolute;
-            top: 15px;
-            right: 15px;
             background: #ffffff;
             border: 2px solid #007bff;
             padding: 6px 12px;
@@ -106,7 +104,9 @@ HTML_PAGE = """
             display: flex;
             align-items: center;
             gap: 6px;
-            z-index: 1000;
+            margin-bottom: 15px;
+            width: 100%;
+            justify-content: space-between;
         }
         .user-code-badge label {
             font-size: 13px;
@@ -115,8 +115,8 @@ HTML_PAGE = """
             white-space: nowrap;
         }
         .user-code-badge input {
-            width: 110px;
-            padding: 4px 8px;
+            width: 130px;
+            padding: 6px 8px;
             font-size: 14px;
             border: 1px solid #ccc;
             border-radius: 12px;
@@ -125,20 +125,17 @@ HTML_PAGE = """
             font-weight: bold;
             color: #dc3545;
         }
-        .user-code-badge input:focus {
-            border-color: #007bff;
-        }
 
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; margin-top: 15px; }
-        textarea { width: 100%; height: 80px; padding: 10px; font-size: 15px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; }
+        .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 15px; width: 100%; overflow: hidden; }
+        textarea { width: 100%; height: 90px; padding: 10px; font-size: 15px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; }
         
         .device-input-box {
             display: flex;
-            align-items: center;
-            gap: 10px;
+            flex-direction: column;
+            gap: 6px;
             margin-bottom: 12px;
             background: #f8f9fa;
-            padding: 8px 12px;
+            padding: 10px;
             border-radius: 6px;
             border: 1px solid #e9ecef;
         }
@@ -146,86 +143,82 @@ HTML_PAGE = """
             font-weight: bold;
             font-size: 14px;
             color: #495057;
-            white-space: nowrap;
         }
         .device-input-box input {
-            padding: 6px 10px;
+            width: 100%;
+            padding: 8px 10px;
             font-size: 14px;
             border: 1px solid #ced4da;
             border-radius: 4px;
             outline: none;
             font-weight: bold;
             color: #28a745;
-            width: 160px;
         }
 
-        button { padding: 8px 15px; font-size: 14px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: bold; }
+        button { padding: 10px 15px; font-size: 14px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: bold; width: 100%; text-align: center; }
         button:hover { opacity: 0.9; }
         .btn-success { background: #28a745; }
         .btn-danger { background: #dc3545; }
-        .btn-refresh { background: #17a2b8; }
+        .btn-refresh { background: #17a2b8; width: auto; }
         
         .btn-row1 { background: #ffc107; color: #212529; }
         .btn-row2 { background: #fd7e14; color: white; }
         .btn-row3 { background: #20c997; color: white; }
         
-        .btn-copy { background: #17a2b8; padding: 5px 12px; font-size: 13px; border-radius: 4px; border: none; color: white; cursor: pointer; font-weight: bold; }
-        .btn-copy-all { background: #6c757d; font-size: 12px; float: right; padding: 4px 10px; }
+        .btn-copy { background: #17a2b8; padding: 6px 10px; font-size: 13px; border-radius: 4px; border: none; color: white; cursor: pointer; font-weight: bold; width: auto; }
+        .btn-copy-all { background: #6c757d; font-size: 12px; padding: 4px 8px; border-radius: 4px; color: white; border: none; float: right; }
         
         .btn-2fa-inline {
             background: #28a745;
             color: white;
             border: none;
-            padding: 5px 10px;
+            padding: 6px 10px;
             font-size: 13px;
             border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            margin-right: 6px;
-            transition: all 0.2s;
-        }
-        .btn-2fa-inline:hover {
-            background: #218838;
-            transform: translateY(-1px);
+            gap: 4px;
+            margin-right: 4px;
         }
         .code-2fa-num {
             font-family: monospace;
-            font-size: 14px;
+            font-size: 13px;
             letter-spacing: 1px;
             background: rgba(0,0,0,0.2);
-            padding: 1px 5px;
+            padding: 1px 4px;
             border-radius: 3px;
         }
         .time-2fa-left {
             font-size: 11px;
             opacity: 0.9;
-            font-weight: normal;
         }
 
-        .toolbar { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; align-items: center; }
-        .toolbar-title { width: 100%; font-weight: bold; color: #495057; font-size: 14px; margin-bottom: 2px; margin-top: 5px; }
+        .toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+        .toolbar-title { width: 100%; font-weight: bold; color: #495057; font-size: 14px; margin-top: 4px; }
+        .toolbar button { width: auto; flex: 1; min-width: 130px; }
         
         .device-box { border: 1px solid #dcdcdc; margin-top: 15px; border-radius: 6px; background: #fff; overflow: hidden; }
-        .ip-header { background: #e9ecef; padding: 8px 12px; font-weight: bold; color: #333; border-bottom: 1px solid #ddd; }
+        .ip-header { background: #e9ecef; padding: 8px 12px; font-weight: bold; color: #333; border-bottom: 1px solid #ddd; font-size: 14px; }
         
         .data-table { width: 100%; border-collapse: collapse; }
         .data-table tr { border-bottom: 1px solid #eee; }
         .data-table tr:last-child { border-bottom: none; }
-        .data-table tr:hover { background-color: #f8f9fa; }
-        .data-table td { padding: 10px 12px; font-size: 14px; vertical-align: middle; }
+        .data-table td { padding: 10px 8px; font-size: 14px; vertical-align: middle; }
         
-        .row-index { width: 60px; font-weight: bold; color: #6c757d; text-align: center; }
-        .text-cell { font-family: Consolas, monospace; font-size: 15px; color: #111; word-break: break-all; }
+        .row-index { width: 50px; font-weight: bold; color: #6c757d; text-align: center; font-size: 13px; }
+        .text-cell { font-family: Consolas, monospace; font-size: 14px; color: #111; word-break: break-all; }
         .action-cell { text-align: right; white-space: nowrap; width: 1%; }
 
-        @media (max-width: 600px) {
-            .user-code-badge { position: relative; top: 0; right: 0; margin-bottom: 10px; justify-content: center; }
-            .card { margin-top: 0; }
-            .action-cell { display: flex; justify-content: flex-end; gap: 5px; margin-top: 6px; }
-            .btn-2fa-inline { margin-right: 0; }
+        /* Tối ưu hóa hiển thị riêng cho màn hình máy tính lớn */
+        @media (min-width: 768px) {
+            body { padding: 20px; }
+            .user-code-badge { position: absolute; top: 15px; right: 20px; width: auto; margin-bottom: 0; }
+            .device-input-box { flex-direction: row; align-items: center; }
+            .device-input-box input { width: 180px; }
+            button { width: auto; }
+            .toolbar button { width: auto; flex: unset; }
         }
     </style>
 </head>
@@ -237,29 +230,28 @@ HTML_PAGE = """
     </div>
 
     <div class="card">
-        <h2>📱 Gửi dữ liệu (Dành cho Điện thoại)</h2>
+        <h2>📱 Gửi dữ liệu (Điện thoại)</h2>
         
         <div class="device-input-box">
-            <label for="device-name">📱 Tên/Mã thiết bị này:</label>
-            <input type="text" id="device-name" placeholder="Ví dụ: Máy 1, Máy 2..." oninput="saveDeviceName()">
-            <span style="font-size: 12px; color: #6c757d;">(Dùng để phân biệt các điện thoại)</span>
+            <label for="device-name">📱 Tên thiết bị:</label>
+            <input type="text" id="device-name" placeholder="Ví dụ: Máy 1..." oninput="saveDeviceName()">
         </div>
 
         <textarea id="content" placeholder="Dán nội dung hoặc mã 2FA vào đây..."></textarea><br><br>
-        <button onclick="sendData()" class="btn-success">Gửi lên Máy tính</button>
-        <span id="send-status" style="margin-left: 10px; font-weight: bold;"></span>
+        <button onclick="sendData()" class="btn-success">📤 Gửi lên Máy tính</button>
+        <span id="send-status" style="margin-left: 10px; font-weight: bold; display: block; margin-top: 8px;"></span>
     </div>
 
     <div class="card">
-        <h2>💻 Dữ liệu đã nhận (Dành cho Máy tính)</h2>
+        <h2>💻 Dữ liệu đã nhận (Máy tính)</h2>
         
         <div class="toolbar">
-            <div class="toolbar-title">⚙️ Quản lý dữ liệu:</div>
-            <button onclick="loadData()" class="btn-refresh">🔄 Làm mới ngay</button>
-            <button onclick="clearAllData()" class="btn-danger">🗑️ Xóa dữ liệu của mã này</button>
+            <div class="toolbar-title">⚙️ Quản lý:</div>
+            <button onclick="loadData()" class="btn-refresh">🔄 Làm mới</button>
+            <button onclick="clearAllData()" class="btn-danger">🗑️ Xóa dữ liệu</button>
 
-            <div class="toolbar-title">⚡ Copy hàng loạt (Theo thứ tự gửi Dòng 1):</div>
-            <button onclick="copyRowAllIp(0)" class="btn-row1">📋 Copy DÒNG 1 (Theo thứ tự gửi)</button>
+            <div class="toolbar-title">⚡ Copy hàng loạt:</div>
+            <button onclick="copyRowAllIp(0)" class="btn-row1">📋 Copy DÒNG 1</button>
             <button onclick="copyRowAllIp(1)" class="btn-row2">📋 Copy DÒNG 2</button>
             <button onclick="copyRowAllIp(2)" class="btn-row3">📋 Copy DÒNG 3</button>
         </div>
@@ -329,7 +321,7 @@ HTML_PAGE = """
         function copyRowAllIp(rowIndex) {
             const userCode = getUserCode();
             if (!userCode) {
-                alert('⚠️ Bạn phải nhập Mã cá nhân ở góc trên bên phải trước!');
+                alert('⚠️ Bạn phải nhập Mã cá nhân ở phía trên trước!');
                 document.getElementById('user-code').focus();
                 return;
             }
@@ -338,7 +330,7 @@ HTML_PAGE = """
                 .then(res => res.json())
                 .then(res => {
                     if (res.status !== 'ok') return alert(res.message);
-                    const devices = res.data; // res.data giờ là Array cố định thứ tự
+                    const devices = res.data;
                     if (!devices || devices.length === 0) return alert('Chưa có dữ liệu nào!');
 
                     let rowItems = [];
@@ -354,7 +346,7 @@ HTML_PAGE = """
 
                     const combinedText = rowItems.join('\\n');
                     copyToClipboard(combinedText).then(() => {
-                        alert('Đã copy Dòng ' + (rowIndex + 1) + ' của ' + rowItems.length + ' máy theo đúng thứ tự gửi Dòng 1!');
+                        alert('Đã copy Dòng ' + (rowIndex + 1) + ' của ' + rowItems.length + ' máy!');
                     }).catch(() => {
                         alert('Sao chép thất bại!');
                     });
@@ -364,7 +356,7 @@ HTML_PAGE = """
         function clearAllData() {
             const userCode = getUserCode();
             if (!userCode) {
-                alert('⚠️ Bạn phải nhập Mã cá nhân ở góc trên bên phải!');
+                alert('⚠️ Bạn phải nhập Mã cá nhân!');
                 document.getElementById('user-code').focus();
                 return;
             }
@@ -425,7 +417,7 @@ HTML_PAGE = """
             const deviceName = getDeviceName();
 
             if (!userCode) {
-                alert('⚠️ BẮT BUỘC: Bạn phải nhập Mã cá nhân ở góc trên bên phải trước khi gửi!');
+                alert('⚠️ BẮT BUỘC: Bạn phải nhập Mã cá nhân trước khi gửi!');
                 document.getElementById('user-code').focus();
                 return;
             }
@@ -465,7 +457,7 @@ HTML_PAGE = """
             const userCode = getUserCode();
 
             if (!userCode) {
-                container.innerHTML = '<p style="color: #dc3545; font-weight: bold; text-align: center; padding: 20px; background: #fff3f3; border: 1px solid #f5c6cb; border-radius: 6px;">⚠️ BẮT BUỘC NHẬP MÃ CÁ NHÂN Ó GÓC TRÊN BÊN PHẢI ĐỂ XEM / LẤY DỮ LIỆU!</p>';
+                container.innerHTML = '<p style="color: #dc3545; font-weight: bold; text-align: center; padding: 15px; background: #fff3f3; border: 1px solid #f5c6cb; border-radius: 6px; font-size: 14px;">⚠️ VUI LÒNG NHẬP MÃ CÁ NHÂN ĐỂ XEM DỮ LIỆU!</p>';
                 return;
             }
 
@@ -477,9 +469,9 @@ HTML_PAGE = """
                         return;
                     }
 
-                    const devices = res.data; // Nhận Mảng (Array)
+                    const devices = res.data;
                     if (!devices || devices.length === 0) {
-                        container.innerHTML = `<p style="color: #777;">Chưa có dữ liệu nào thuộc Mã cá nhân <b>"${userCode}"</b>.</p>`;
+                        container.innerHTML = `<p style="color: #777; font-size: 14px;">Chưa có dữ liệu nào thuộc Mã cá nhân <b>"${userCode}"</b>.</p>`;
                         return;
                     }
 
@@ -489,7 +481,7 @@ HTML_PAGE = """
                         html += `<div class="device-box">
                             <div class="ip-header">
                                 📱 ${deviceKey}
-                                <button class="btn-copy-all" onclick="copyAllIp('${deviceKey}')">📋 Copy tất cả mục này</button>
+                                <button class="btn-copy-all" onclick="copyAllIp('${deviceKey}')">📋 Copy tất cả</button>
                             </div>
                             <table class="data-table">`;
                         
@@ -499,8 +491,8 @@ HTML_PAGE = """
                             let btn2FA = '';
                             if (item.totp) {
                                 btn2FA = `
-                                    <button class="btn-2fa-inline" onclick="copyText('${item.totp.code}', this)" title="Bấm để copy mã 2FA">
-                                        ⚡ 2FA: <span class="code-2fa-num">${item.totp.code}</span>
+                                    <button class="btn-2fa-inline" onclick="copyText('${item.totp.code}', this)" title="Copy 2FA">
+                                        ⚡ <span class="code-2fa-num">${item.totp.code}</span>
                                         <span class="time-2fa-left">(${item.totp.time_left}s)</span>
                                     </button>
                                 `;
@@ -510,8 +502,10 @@ HTML_PAGE = """
                                 <td class="row-index">Dòng ${index + 1}</td>
                                 <td class="text-cell">${item.text}</td>
                                 <td class="action-cell">
-                                    ${btn2FA}
-                                    <button class="btn-copy" onclick="copyText(decodeURIComponent('${escapedItem}'), this)">Copy Dòng</button>
+                                    <div style="display: flex; gap: 4px; justify-content: flex-end; align-items: center;">
+                                        ${btn2FA}
+                                        <button class="btn-copy" onclick="copyText(decodeURIComponent('${escapedItem}'), this)">Copy</button>
+                                    </div>
                                 </td>
                             </tr>`;
                         });
@@ -550,16 +544,13 @@ def send_data():
     if content:
         key = f"Mã cá nhân: {user_code} - Thiết bị: {device_name}"
         
-        # Chỉ tạo mốc thời gian "line1_at" lần đầu tiên máy gửi Dòng 1
         if key not in clipboard_data:
             clipboard_data[key] = {
                 'line1_at': time.time(),
                 'lines': []
             }
         
-        # Thêm nội dung nối tiếp theo thứ tự Dòng 1, Dòng 2, Dòng 3...
         clipboard_data[key]['lines'].append(content)
-        
         return jsonify({'status': 'ok'})
         
     return jsonify({'status': 'error', 'message': 'Nội dung không được để trống!'})
@@ -573,16 +564,13 @@ def get_data():
     
     prefix = f"Mã cá nhân: {user_code} "
     
-    # 1. Lọc các máy theo Mã cá nhân
     matching_devices = []
     for k, item_data in clipboard_data.items():
         if k.startswith(prefix):
             matching_devices.append((k, item_data))
     
-    # 2. Sắp xếp theo thời gian gửi Dòng 1 (Gửi trước xếp trước)
     matching_devices.sort(key=lambda x: x[1]['line1_at'])
     
-    # 3. CHUYỂN DẠNG TRẢ VỀ THÀNH MẢNG (ARRAY / LIST) ĐỂ TRÌNH DUYỆT KHÔNG TỰ SẮP XẾP LẠI
     filtered_data = []
     for k, item_data in matching_devices:
         device_lines = []
