@@ -154,11 +154,11 @@ HTML_PAGE = """
         .btn-row2 { background: #fd7e14; color: white; }
         .btn-row3 { background: #20c997; color: white; }
         
-        /* ⚡ THU NHỎ NÚT COPY TỐI ĐA */
+        /* ⚡ TỐI ƯU CỘT HÀNH ĐỘNG CỰC KỲ GỌN ĐỂ NHƯỜNG CHỖ CHO CHỮ */
         .btn-copy { 
             background: #17a2b8 !important; 
-            padding: 3px 6px !important; 
-            font-size: 11px !important; 
+            padding: 2px 5px !important; 
+            font-size: 10px !important; 
             border-radius: 3px !important; 
             border: none !important; 
             color: white !important; 
@@ -168,41 +168,41 @@ HTML_PAGE = """
             min-width: unset !important;
             flex: unset !important;
             display: inline-block !important;
-            line-height: 1.2 !important;
+            line-height: 1.1 !important;
         }
-        .btn-copy-all { background: #6c757d; font-size: 12px; padding: 4px 8px; border-radius: 4px; color: white; border: none; float: right; }
+        .btn-copy-all { background: #6c757d; font-size: 11px; padding: 3px 6px; border-radius: 3px; color: white; border: none; float: right; }
         
         /* ⚡ THU NHỎ NÚT 2FA TỐI ĐA */
         .btn-2fa-inline {
             background: #28a745 !important;
             color: white !important;
             border: none !important;
-            padding: 3px 6px !important;
-            font-size: 11px !important;
+            padding: 2px 5px !important;
+            font-size: 10px !important;
             border-radius: 3px !important;
             cursor: pointer !important;
             font-weight: bold !important;
             display: inline-flex !important;
             align-items: center !important;
-            gap: 3px !important;
+            gap: 2px !important;
             width: auto !important; 
             min-width: unset !important;
             flex: unset !important;
-            line-height: 1.2 !important;
+            line-height: 1.1 !important;
         }
         .btn-2fa-inline:hover {
             background: #218838 !important;
         }
         .code-2fa-num {
             font-family: monospace;
-            font-size: 11px;
-            letter-spacing: 0.5px;
+            font-size: 10px;
+            letter-spacing: 0.3px;
             background: rgba(0,0,0,0.2);
             padding: 1px 2px;
             border-radius: 2px;
         }
         .time-2fa-left {
-            font-size: 9px;
+            font-size: 8px;
             opacity: 0.9;
         }
 
@@ -213,13 +213,19 @@ HTML_PAGE = """
         .device-box { border: 1px solid #dcdcdc; margin-top: 15px; border-radius: 6px; background: #fff; overflow: hidden; }
         .ip-header { background: #e9ecef; padding: 8px 12px; font-weight: bold; color: #333; border-bottom: 1px solid #ddd; font-size: 14px; }
         
-        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table { width: 100%; border-collapse: collapse; table-layout: fixed; } /* Ép bảng tối ưu không gian */
         .data-table tr { border-bottom: 1px solid #eee; }
         .data-table tr:last-child { border-bottom: none; }
         .data-table td { padding: 6px 4px; vertical-align: middle; }
         
-        .row-index { width: 40px; font-weight: bold; color: #6c757d; text-align: center; font-size: 12px; }
-        .text-cell { font-family: Consolas, monospace; font-size: 14px; color: #111; word-break: break-all; }
+        .row-index { width: 45px; font-weight: bold; color: #6c757d; text-align: center; font-size: 11px; }
+        .text-cell { 
+            font-family: Consolas, monospace; 
+            font-size: 13px; 
+            color: #111; 
+            word-break: break-all; 
+            overflow-wrap: break-word;
+        } /* Tối đa hóa chiều rộng hiển thị nội dung chữ */
         .action-cell { text-align: right; white-space: nowrap; width: 1%; }
 
         @media (min-width: 768px) {
@@ -229,6 +235,7 @@ HTML_PAGE = """
             .device-input-box input { width: 180px; }
             button { width: auto; }
             .toolbar button { width: auto; flex: unset; }
+            .text-cell { font-size: 15px; }
         }
     </style>
 </head>
@@ -536,7 +543,7 @@ HTML_PAGE = """
                                 <td class="row-index">Dòng ${index + 1}</td>
                                 <td class="text-cell">${item.text}</td>
                                 <td class="action-cell">
-                                    <div style="display: inline-flex; gap: 3px; align-items: center;">
+                                    <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
                                         ${btn2FA}
                                         <button class="btn-copy" onclick="copyText(decodeURIComponent('${escapedItem}'), this)">Copy</button>
                                     </div>
@@ -631,10 +638,4 @@ def clear_data():
     prefix = f"Mã cá nhân: {user_code} "
     keys_to_delete = [k for k in clipboard_data if k.startswith(prefix)]
     for k in keys_to_delete:
-        del clipboard_data[k]
-        
-    return jsonify({'status': 'ok'})
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+        del clipboard_data
