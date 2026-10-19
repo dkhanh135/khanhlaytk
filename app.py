@@ -154,10 +154,10 @@ HTML_PAGE = """
         .btn-row2 { background: #fd7e14; color: white; }
         .btn-row3 { background: #20c997; color: white; }
         
-        /* ⚡ TĂNG GẤP ĐÔI KÍCH THƯỚC NÚT COPY (TO RÕ, DỄ BẤM) */
+        /* ⚡ TỐI ƯU CỰC KỲ TO RÕ TRÊN ĐIỆN THOẠI */
         .btn-copy { 
             background: #17a2b8 !important; 
-            padding: 8px 16px !important; 
+            padding: 12px 20px !important; 
             font-size: 16px !important; 
             border-radius: 6px !important; 
             border: none !important; 
@@ -168,17 +168,15 @@ HTML_PAGE = """
             min-width: unset !important;
             flex: unset !important;
             display: inline-block !important;
-            line-height: 1.2 !important;
             box-shadow: 0 2px 4px rgba(0,0,0,0.15);
         }
         .btn-copy-all { background: #6c757d; font-size: 12px; padding: 4px 8px; border-radius: 4px; color: white; border: none; float: right; }
         
-        /* ⚡ TĂNG GẤP ĐÔI KÍCH THƯỚC NÚT 2FA */
         .btn-2fa-inline {
             background: #28a745 !important;
             color: white !important;
             border: none !important;
-            padding: 8px 14px !important;
+            padding: 12px 18px !important;
             font-size: 16px !important;
             border-radius: 6px !important;
             cursor: pointer !important;
@@ -189,7 +187,6 @@ HTML_PAGE = """
             width: auto !important; 
             min-width: unset !important;
             flex: unset !important;
-            line-height: 1.2 !important;
             box-shadow: 0 2px 4px rgba(0,0,0,0.15);
         }
         .btn-2fa-inline:hover {
@@ -213,17 +210,17 @@ HTML_PAGE = """
         .toolbar button { width: auto; flex: 1; min-width: 130px; }
         
         .device-box { border: 1px solid #dcdcdc; margin-top: 15px; border-radius: 6px; background: #fff; overflow: hidden; }
-        .ip-header { background: #e9ecef; padding: 8px 12px; font-weight: bold; color: #333; border-bottom: 1px solid #ddd; font-size: 14px; }
+        .ip-header { background: #e9ecef; padding: 10px 12px; font-weight: bold; color: #333; border-bottom: 1px solid #ddd; font-size: 15px; }
         
         .data-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .data-table tr { border-bottom: 1px solid #eee; }
         .data-table tr:last-child { border-bottom: none; }
-        .data-table td { padding: 10px 6px; vertical-align: middle; }
+        .data-table td { padding: 14px 8px; vertical-align: middle; }
         
-        .row-index { width: 45px; font-weight: bold; color: #6c757d; text-align: center; font-size: 13px; }
+        .row-index { width: 50px; font-weight: bold; color: #6c757d; text-align: center; font-size: 14px; }
         .text-cell { 
             font-family: Consolas, monospace; 
-            font-size: 15px; 
+            font-size: 16px; 
             color: #111; 
             word-break: break-all; 
             overflow-wrap: break-word;
@@ -237,7 +234,9 @@ HTML_PAGE = """
             .device-input-box input { width: 180px; }
             button { width: auto; }
             .toolbar button { width: auto; flex: unset; }
-            .text-cell { font-size: 16px; }
+            .btn-copy { padding: 8px 16px !important; font-size: 14px !important; }
+            .btn-2fa-inline { padding: 8px 14px !important; font-size: 14px !important; }
+            .text-cell { font-size: 15px; }
         }
     </style>
 </head>
@@ -426,7 +425,7 @@ HTML_PAGE = """
         function copyText(text, btn) {
             copyToClipboard(text).then(() => {
                 const originalText = btn.innerHTML;
-                btn.innerText = '✓';
+                btn.innerText = '✓ Đã copy';
                 const originalBg = btn.style.background;
                 btn.style.background = '#17a2b8';
                 setTimeout(() => {
@@ -545,7 +544,7 @@ HTML_PAGE = """
                                 <td class="row-index">Dòng ${index + 1}</td>
                                 <td class="text-cell">${item.text}</td>
                                 <td class="action-cell">
-                                    <div style="display: flex; gap: 6px; align-items: center; justify-content: flex-end;">
+                                    <div style="display: flex; gap: 8px; align-items: center; justify-content: flex-end;">
                                         ${btn2FA}
                                         <button class="btn-copy" onclick="copyText(decodeURIComponent('${escapedItem}'), this)">Copy</button>
                                     </div>
@@ -582,68 +581,4 @@ def send_data():
     device_name = request.form.get('device_name', '').strip() or f"Máy-{ip}"
     
     if not user_code:
-        return jsonify({'status': 'error', 'message': 'Vui lòng nhập Mã cá nhân trước khi gửi!'})
-    
-    if content:
-        key = f"Mã cá nhân: {user_code} - Thiết bị: {device_name}"
-        
-        if key not in clipboard_data:
-            clipboard_data[key] = {
-                'line1_at': time.time(),
-                'lines': []
-            }
-        
-        clipboard_data[key]['lines'].append(content)
-        return jsonify({'status': 'ok'})
-        
-    return jsonify({'status': 'error', 'message': 'Nội dung không được để trống!'})
-
-@app.route('/api/data')
-def get_data():
-    user_code = request.args.get('user_code', '').strip()
-    
-    if not user_code:
-        return jsonify({'status': 'error', 'message': 'Bạn phải nhập Mã cá nhân mới có thể xem/lấy dữ liệu!'})
-    
-    prefix = f"Mã cá nhân: {user_code} "
-    
-    matching_devices = []
-    for k, item_data in clipboard_data.items():
-        if k.startswith(prefix):
-            matching_devices.append((k, item_data))
-    
-    matching_devices.sort(key=lambda x: x[1]['line1_at'])
-    
-    filtered_data = []
-    for k, item_data in matching_devices:
-        device_lines = []
-        for text in item_data['lines']:
-            totp_info = detect_2fa_in_text(text)
-            device_lines.append({
-                'text': text,
-                'totp': totp_info
-            })
-        filtered_data.append({
-            'device_key': k,
-            'lines': device_lines
-        })
-    
-    return jsonify({'status': 'ok', 'data': filtered_data})
-
-@app.route('/api/clear', methods=['POST'])
-def clear_data():
-    user_code = request.form.get('user_code', '').strip()
-    
-    if not user_code:
-        return jsonify({'status': 'error', 'message': 'Vui lòng nhập Mã cá nhân!'})
-    
-    prefix = f"Mã cá nhân: {user_code} "
-    keys_to_delete = [k for k in clipboard_data if k.startswith(prefix)]
-    for k in keys_to_delete:
-        del clipboard_data[k]
-        
-    return jsonify({'status': 'ok'})
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+        return jsonify({'status': 'error', 'message': 'Vui lòng nhập Mã cá
