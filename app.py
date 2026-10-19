@@ -154,46 +154,46 @@ HTML_PAGE = """
         .btn-row2 { background: #fd7e14; color: white; }
         .btn-row3 { background: #20c997; color: white; }
         
-        /* ⚡ ĐÃ THU GỌN VÀ ÉP NÚT COPY NGẮN LẠI */
+        /* ⚡ ÉP NÚT COPY SIÊU NGỌN GÀNG */
         .btn-copy { 
-            background: #17a2b8; 
-            padding: 5px 10px; 
-            font-size: 13px; 
-            border-radius: 4px; 
-            border: none; 
-            color: white; 
-            cursor: pointer; 
-            font-weight: bold; 
-            width: auto !important;
+            background: #17a2b8 !important; 
+            padding: 4px 10px !important; 
+            font-size: 12px !important; 
+            border-radius: 4px !important; 
+            border: none !important; 
+            color: white !important; 
+            cursor: pointer !important; 
+            font-weight: bold !important; 
+            width: auto !important; 
+            min-width: unset !important;
             flex: unset !important;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            display: inline-block !important;
         }
         .btn-copy-all { background: #6c757d; font-size: 12px; padding: 4px 8px; border-radius: 4px; color: white; border: none; float: right; }
         
-        /* ⚡ ĐÃ THU GỌN VÀ ÉP NÚT 2FA NGẮN LẠI */
+        /* ⚡ ÉP NÚT 2FA SIÊU NGỌN GÀNG */
         .btn-2fa-inline {
-            background: #28a745;
-            color: white;
-            border: none;
-            padding: 5px 8px;
-            font-size: 13px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            width: auto !important;
+            background: #28a745 !important;
+            color: white !important;
+            border: none !important;
+            padding: 4px 8px !important;
+            font-size: 12px !important;
+            border-radius: 4px !important;
+            cursor: pointer !important;
+            font-weight: bold !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 4px !important;
+            width: auto !important; 
+            min-width: unset !important;
             flex: unset !important;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
         .btn-2fa-inline:hover {
-            background: #218838;
-            transform: translateY(-1px);
+            background: #218838 !important;
         }
         .code-2fa-num {
             font-family: monospace;
-            font-size: 13px;
+            font-size: 12px;
             letter-spacing: 0.5px;
             background: rgba(0,0,0,0.2);
             padding: 1px 3px;
@@ -392,7 +392,7 @@ HTML_PAGE = """
                 return;
             }
 
-            if (confirm('Bạn có chắc muốn XÓA TẤT CẢ dữ liệu của Mã "' + userCode + '" không?')) {
+            if (confirm('⚠️ Bạn có chắc muốn XÓA TẤT CẢ dữ liệu của Mã "' + userCode + '" không?')) {
                 fetch('/api/clear', { 
                     method: 'POST', 
                     headers: { 
@@ -556,7 +556,7 @@ HTML_PAGE = """
 
 def get_client_ip():
     if request.headers.get('X-Forwarded-For'):
-        return request.headers.get('X-Forwarded-For')[0].strip()
+        return request.headers.get('X-Forwarded-For').split(',')[0].strip()
     return request.remote_addr
 
 @app.route('/')
@@ -578,4 +578,23 @@ def send_data():
         
         if key not in clipboard_data:
             clipboard_data[key] = {
-                'line1_
+                'line1_at': time.time(),
+                'lines': []
+            }
+        
+        clipboard_data[key]['lines'].append(content)
+        return jsonify({'status': 'ok'})
+        
+    return jsonify({'status': 'error', 'message': 'Nội dung không được để trống!'})
+
+@app.route('/api/data')
+def get_data():
+    user_code = request.args.get('user_code', '').strip()
+    
+    if not user_code:
+        return jsonify({'status': 'error', 'message': 'Bạn phải nhập Mã cá nhân mới có thể xem/lấy dữ liệu!'})
+    
+    prefix = f"Mã cá nhân: {user_code} "
+    
+    matching_devices = []
+    for k, item
