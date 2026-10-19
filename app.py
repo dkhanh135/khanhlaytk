@@ -226,7 +226,7 @@ HTML_PAGE = """
         }
     </style>
 </head>
-<body>
+<body onkeydown="handleGlobalKey(event)">
 
     <div class="user-code-badge">
         <label for="user-code">🔑 Mã cá nhân (*):</label>
@@ -283,15 +283,17 @@ HTML_PAGE = """
             loadData();
         });
 
-        // ⚡ BẮT PHÍM DELETE TOÀN TRANG ĐỂ XÓA DỮ LIỆU NHANH
-        window.addEventListener('keydown', (event) => {
-            // Kiểm tra nếu bấm phím Delete (hoặc Del) và KHÔNG ĐANG GÕ trong ô nhập liệu văn bản / ô mã cá nhân / ô tên thiết bị
-            const activeTag = document.activeElement.tagName.toLowerCase();
-            if ((event.key === 'Delete' || event.keyCode === 46) && activeTag !== 'textarea' && activeTag !== 'input') {
-                event.preventDefault();
-                clearAllData();
+        // ⚡ HÀM BẮT PHÍM DELETE TRỰC TIẾP TRÊN BODY
+        function handleGlobalKey(event) {
+            if (event.key === 'Delete' || event.keyCode === 46) {
+                const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+                // Chỉ kích hoạt xóa khi KHÔNG ĐANG GÕ trong khung nhập liệu hoặc ô input
+                if (activeTag !== 'textarea' && activeTag !== 'input') {
+                    event.preventDefault();
+                    clearAllData();
+                }
             }
-        });
+        }
 
         function saveUserCode() {
             const code = document.getElementById('user-code').value.trim();
