@@ -154,34 +154,36 @@ HTML_PAGE = """
         .btn-row2 { background: #fd7e14; color: white; }
         .btn-row3 { background: #20c997; color: white; }
         
+        /* ⚡ ĐÃ THU NGẮN NÚT COPY DÒNG CHO GỌN GÀNG */
         .btn-copy { 
             background: #17a2b8; 
-            padding: 12px 22px; 
-            font-size: 16px; 
-            border-radius: 6px; 
+            padding: 6px 12px; 
+            font-size: 14px; 
+            border-radius: 4px; 
             border: none; 
             color: white; 
             cursor: pointer; 
             font-weight: bold; 
-            min-width: 100px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+            min-width: unset;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         .btn-copy-all { background: #6c757d; font-size: 12px; padding: 4px 8px; border-radius: 4px; color: white; border: none; float: right; }
         
+        /* ⚡ ĐÃ THU NGẮN NÚT 2FA CHO GỌN GÀNG */
         .btn-2fa-inline {
             background: #28a745;
             color: white;
             border: none;
-            padding: 12px 18px;
-            font-size: 16px;
-            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 14px;
+            border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            margin-right: 6px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+            gap: 4px;
+            margin-right: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         .btn-2fa-inline:hover {
             background: #218838;
@@ -189,15 +191,15 @@ HTML_PAGE = """
         }
         .code-2fa-num {
             font-family: monospace;
-            font-size: 17px;
-            letter-spacing: 1.5px;
-            background: rgba(0,0,0,0.25);
-            padding: 2px 6px;
-            border-radius: 4px;
+            font-size: 14px;
+            letter-spacing: 1px;
+            background: rgba(0,0,0,0.2);
+            padding: 1px 4px;
+            border-radius: 3px;
         }
         .time-2fa-left {
-            font-size: 12px;
-            opacity: 0.95;
+            font-size: 11px;
+            opacity: 0.9;
         }
 
         .toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
@@ -210,10 +212,10 @@ HTML_PAGE = """
         .data-table { width: 100%; border-collapse: collapse; }
         .data-table tr { border-bottom: 1px solid #eee; }
         .data-table tr:last-child { border-bottom: none; }
-        .data-table td { padding: 14px 8px; vertical-align: middle; }
+        .data-table td { padding: 10px 8px; vertical-align: middle; }
         
-        .row-index { width: 50px; font-weight: bold; color: #6c757d; text-align: center; font-size: 14px; }
-        .text-cell { font-family: Consolas, monospace; font-size: 15px; color: #111; word-break: break-all; }
+        .row-index { width: 50px; font-weight: bold; color: #6c757d; text-align: center; font-size: 13px; }
+        .text-cell { font-family: Consolas, monospace; font-size: 14px; color: #111; word-break: break-all; }
         .action-cell { text-align: right; white-space: nowrap; width: 1%; }
 
         @media (min-width: 768px) {
@@ -283,11 +285,9 @@ HTML_PAGE = """
             loadData();
         });
 
-        // ⚡ HÀM BẮT PHÍM DELETE TRỰC TIẾP TRÊN BODY
         function handleGlobalKey(event) {
             if (event.key === 'Delete' || event.keyCode === 46) {
                 const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
-                // Chỉ kích hoạt xóa khi KHÔNG ĐANG GÕ trong khung nhập liệu hoặc ô input
                 if (activeTag !== 'textarea' && activeTag !== 'input') {
                     event.preventDefault();
                     clearAllData();
@@ -413,7 +413,7 @@ HTML_PAGE = """
         function copyText(text, btn) {
             copyToClipboard(text).then(() => {
                 const originalText = btn.innerHTML;
-                btn.innerText = '✓ Đã copy';
+                btn.innerText = '✓';
                 const originalBg = btn.style.background;
                 btn.style.background = '#17a2b8';
                 setTimeout(() => {
@@ -532,7 +532,7 @@ HTML_PAGE = """
                                 <td class="row-index">Dòng ${index + 1}</td>
                                 <td class="text-cell">${item.text}</td>
                                 <td class="action-cell">
-                                    <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
+                                    <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
                                         ${btn2FA}
                                         <button class="btn-copy" onclick="copyText(decodeURIComponent('${escapedItem}'), this)">Copy</button>
                                     </div>
@@ -609,28 +609,3 @@ def get_data():
             device_lines.append({
                 'text': text,
                 'totp': totp_info
-            })
-        filtered_data.append({
-            'device_key': k,
-            'lines': device_lines
-        })
-    
-    return jsonify({'status': 'ok', 'data': filtered_data})
-
-@app.route('/api/clear', methods=['POST'])
-def clear_data():
-    user_code = request.form.get('user_code', '').strip()
-    
-    if not user_code:
-        return jsonify({'status': 'error', 'message': 'Vui lòng nhập Mã cá nhân!'})
-    
-    prefix = f"Mã cá nhân: {user_code} "
-    keys_to_delete = [k for k in clipboard_data if k.startswith(prefix)]
-    for k in keys_to_delete:
-        del clipboard_data[k]
-        
-    return jsonify({'status': 'ok'})
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
