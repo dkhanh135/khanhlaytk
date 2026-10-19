@@ -154,36 +154,38 @@ HTML_PAGE = """
         .btn-row2 { background: #fd7e14; color: white; }
         .btn-row3 { background: #20c997; color: white; }
         
-        /* ⚡ ĐÃ THU NGẮN NÚT COPY DÒNG CHO GỌN GÀNG */
+        /* ⚡ ĐÃ THU GỌN VÀ ÉP NÚT COPY NGẮN LẠI */
         .btn-copy { 
             background: #17a2b8; 
-            padding: 6px 12px; 
-            font-size: 14px; 
+            padding: 5px 10px; 
+            font-size: 13px; 
             border-radius: 4px; 
             border: none; 
             color: white; 
             cursor: pointer; 
             font-weight: bold; 
-            min-width: unset;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            width: auto !important;
+            flex: unset !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
         .btn-copy-all { background: #6c757d; font-size: 12px; padding: 4px 8px; border-radius: 4px; color: white; border: none; float: right; }
         
-        /* ⚡ ĐÃ THU NGẮN NÚT 2FA CHO GỌN GÀNG */
+        /* ⚡ ĐÃ THU GỌN VÀ ÉP NÚT 2FA NGẮN LẠI */
         .btn-2fa-inline {
             background: #28a745;
             color: white;
             border: none;
-            padding: 6px 10px;
-            font-size: 14px;
+            padding: 5px 8px;
+            font-size: 13px;
             border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            margin-right: 4px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            width: auto !important;
+            flex: unset !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
         .btn-2fa-inline:hover {
             background: #218838;
@@ -191,14 +193,14 @@ HTML_PAGE = """
         }
         .code-2fa-num {
             font-family: monospace;
-            font-size: 14px;
-            letter-spacing: 1px;
+            font-size: 13px;
+            letter-spacing: 0.5px;
             background: rgba(0,0,0,0.2);
-            padding: 1px 4px;
+            padding: 1px 3px;
             border-radius: 3px;
         }
         .time-2fa-left {
-            font-size: 11px;
+            font-size: 10px;
             opacity: 0.9;
         }
 
@@ -212,9 +214,9 @@ HTML_PAGE = """
         .data-table { width: 100%; border-collapse: collapse; }
         .data-table tr { border-bottom: 1px solid #eee; }
         .data-table tr:last-child { border-bottom: none; }
-        .data-table td { padding: 10px 8px; vertical-align: middle; }
+        .data-table td { padding: 8px 6px; vertical-align: middle; }
         
-        .row-index { width: 50px; font-weight: bold; color: #6c757d; text-align: center; font-size: 13px; }
+        .row-index { width: 40px; font-weight: bold; color: #6c757d; text-align: center; font-size: 12px; }
         .text-cell { font-family: Consolas, monospace; font-size: 14px; color: #111; word-break: break-all; }
         .action-cell { text-align: right; white-space: nowrap; width: 1%; }
 
@@ -532,7 +534,7 @@ HTML_PAGE = """
                                 <td class="row-index">Dòng ${index + 1}</td>
                                 <td class="text-cell">${item.text}</td>
                                 <td class="action-cell">
-                                    <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
+                                    <div style="display: inline-flex; gap: 4px; align-items: center;">
                                         ${btn2FA}
                                         <button class="btn-copy" onclick="copyText(decodeURIComponent('${escapedItem}'), this)">Copy</button>
                                     </div>
@@ -554,7 +556,7 @@ HTML_PAGE = """
 
 def get_client_ip():
     if request.headers.get('X-Forwarded-For'):
-        return request.headers.get('X-Forwarded-For').split(',')[0].strip()
+        return request.headers.get('X-Forwarded-For')[0].strip()
     return request.remote_addr
 
 @app.route('/')
@@ -576,36 +578,4 @@ def send_data():
         
         if key not in clipboard_data:
             clipboard_data[key] = {
-                'line1_at': time.time(),
-                'lines': []
-            }
-        
-        clipboard_data[key]['lines'].append(content)
-        return jsonify({'status': 'ok'})
-        
-    return jsonify({'status': 'error', 'message': 'Nội dung không được để trống!'})
-
-@app.route('/api/data')
-def get_data():
-    user_code = request.args.get('user_code', '').strip()
-    
-    if not user_code:
-        return jsonify({'status': 'error', 'message': 'Bạn phải nhập Mã cá nhân mới có thể xem/lấy dữ liệu!'})
-    
-    prefix = f"Mã cá nhân: {user_code} "
-    
-    matching_devices = []
-    for k, item_data in clipboard_data.items():
-        if k.startswith(prefix):
-            matching_devices.append((k, item_data))
-    
-    matching_devices.sort(key=lambda x: x[1]['line1_at'])
-    
-    filtered_data = []
-    for k, item_data in matching_devices:
-        device_lines = []
-        for text in item_data['lines']:
-            totp_info = detect_2fa_in_text(text)
-            device_lines.append({
-                'text': text,
-                'totp': totp_info
+                'line1_
