@@ -165,34 +165,52 @@ HTML_PAGE = """
         .btn-row2 { background: #fd7e14; color: white; }
         .btn-row3 { background: #20c997; color: white; }
         
-        .btn-copy { background: #17a2b8; padding: 6px 10px; font-size: 13px; border-radius: 4px; border: none; color: white; cursor: pointer; font-weight: bold; width: auto; }
+        /* ĐÃ LÀM TO NÚT COPY DÒNG */
+        .btn-copy { 
+            background: #17a2b8; 
+            padding: 10px 16px; 
+            font-size: 15px; 
+            border-radius: 6px; 
+            border: none; 
+            color: white; 
+            cursor: pointer; 
+            font-weight: bold; 
+            width: auto; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
         .btn-copy-all { background: #6c757d; font-size: 12px; padding: 4px 8px; border-radius: 4px; color: white; border: none; float: right; }
         
+        /* ĐÃ LÀM TO NÚT 2FA */
         .btn-2fa-inline {
             background: #28a745;
             color: white;
             border: none;
-            padding: 6px 10px;
-            font-size: 13px;
-            border-radius: 4px;
+            padding: 10px 14px;
+            font-size: 15px;
+            border-radius: 6px;
             cursor: pointer;
             font-weight: bold;
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            margin-right: 4px;
+            gap: 6px;
+            margin-right: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .btn-2fa-inline:hover {
+            background: #218838;
+            transform: translateY(-1px);
         }
         .code-2fa-num {
             font-family: monospace;
-            font-size: 13px;
-            letter-spacing: 1px;
-            background: rgba(0,0,0,0.2);
-            padding: 1px 4px;
-            border-radius: 3px;
+            font-size: 16px;
+            letter-spacing: 1.5px;
+            background: rgba(0,0,0,0.25);
+            padding: 2px 6px;
+            border-radius: 4px;
         }
         .time-2fa-left {
-            font-size: 11px;
-            opacity: 0.9;
+            font-size: 12px;
+            opacity: 0.95;
         }
 
         .toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
@@ -205,13 +223,12 @@ HTML_PAGE = """
         .data-table { width: 100%; border-collapse: collapse; }
         .data-table tr { border-bottom: 1px solid #eee; }
         .data-table tr:last-child { border-bottom: none; }
-        .data-table td { padding: 10px 8px; font-size: 14px; vertical-align: middle; }
+        .data-table td { padding: 12px 8px; font-size: 14px; vertical-align: middle; }
         
-        .row-index { width: 50px; font-weight: bold; color: #6c757d; text-align: center; font-size: 13px; }
-        .text-cell { font-family: Consolas, monospace; font-size: 14px; color: #111; word-break: break-all; }
+        .row-index { width: 50px; font-weight: bold; color: #6c757d; text-align: center; font-size: 14px; }
+        .text-cell { font-family: Consolas, monospace; font-size: 15px; color: #111; word-break: break-all; }
         .action-cell { text-align: right; white-space: nowrap; width: 1%; }
 
-        /* Tối ưu hóa hiển thị riêng cho màn hình máy tính lớn */
         @media (min-width: 768px) {
             body { padding: 20px; }
             .user-code-badge { position: absolute; top: 15px; right: 20px; width: auto; margin-bottom: 0; }
@@ -502,7 +519,7 @@ HTML_PAGE = """
                                 <td class="row-index">Dòng ${index + 1}</td>
                                 <td class="text-cell">${item.text}</td>
                                 <td class="action-cell">
-                                    <div style="display: flex; gap: 4px; justify-content: flex-end; align-items: center;">
+                                    <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
                                         ${btn2FA}
                                         <button class="btn-copy" onclick="copyText(decodeURIComponent('${escapedItem}'), this)">Copy</button>
                                     </div>
