@@ -241,7 +241,6 @@ HTML_PAGE = """
             <input type="text" id="device-name" placeholder="Ví dụ: Máy 1..." oninput="saveDeviceName()">
         </div>
 
-        <!-- Dùng onkeypress kết hợp onkeydown để bắt chính xác phím Enter -->
         <textarea id="content" placeholder="Dán nội dung hoặc mã 2FA vào đây (Bấm Enter để gửi)..." onkeypress="handleKeyPress(event)"></textarea><br><br>
         
         <button onclick="sendData()" class="btn-success">📤 Gửi lên Máy tính</button>
@@ -284,6 +283,16 @@ HTML_PAGE = """
             loadData();
         });
 
+        // ⚡ BẮT PHÍM DELETE TOÀN TRANG ĐỂ XÓA DỮ LIỆU NHANH
+        window.addEventListener('keydown', (event) => {
+            // Kiểm tra nếu bấm phím Delete (hoặc Del) và KHÔNG ĐANG GÕ trong ô nhập liệu văn bản / ô mã cá nhân / ô tên thiết bị
+            const activeTag = document.activeElement.tagName.toLowerCase();
+            if ((event.key === 'Delete' || event.keyCode === 46) && activeTag !== 'textarea' && activeTag !== 'input') {
+                event.preventDefault();
+                clearAllData();
+            }
+        });
+
         function saveUserCode() {
             const code = document.getElementById('user-code').value.trim();
             localStorage.setItem('my_user_code', code);
@@ -305,15 +314,12 @@ HTML_PAGE = """
             return document.getElementById('device-name').value.trim() || 'Máy ẩn danh';
         }
 
-        // ⚡ HÀM BẮT PHÍM ENTER ĐÃ TỐI ƯU TRIỆT ĐỂ
         function handleKeyPress(event) {
             if (event.key === 'Enter' || event.keyCode === 13) {
                 if (event.shiftKey) {
-                    return; // Vẫn cho phép xuống dòng nếu giữ Shift + Enter
+                    return; 
                 }
-                event.preventDefault(); // Chặn hành vi xuống dòng mặc định của textarea
-                
-                // Dùng setTimeout cực ngắn để làm sạch khoảng trắng thừa trước khi gửi
+                event.preventDefault(); 
                 setTimeout(() => {
                     sendData();
                 }, 10);
@@ -445,7 +451,7 @@ HTML_PAGE = """
             }
 
             if (!text) {
-                contentBox.value = ''; // Làm sạch khoảng trắng rỗng
+                contentBox.value = ''; 
                 return;
             }
 
@@ -462,7 +468,7 @@ HTML_PAGE = """
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'ok') {
-                    contentBox.value = ''; // Xóa sạch ô nhập sau khi gửi thành công
+                    contentBox.value = ''; 
                     const status = document.getElementById('send-status');
                     status.style.color = '#28a745';
                     status.innerText = '✅ Đã gửi thành công!';
