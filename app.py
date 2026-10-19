@@ -9,18 +9,8 @@ from flask import Flask, request, render_template_string, jsonify
 
 app = Flask(__name__)
 
-# Cấu trúc lưu trữ dữ liệu:
-# { 
-#   "Mã cá nhân: XXX - Thiết bị: YYY": { 
-#       "line1_at": 1712345678.9, 
-#       "lines": ["Dòng 1", "Dòng 2", "Dòng 3"] 
-#   } 
-# }
 clipboard_data = {}
 
-# =========================================================================
-# 📌 XỬ LÝ & TỰ ĐỘNG TÍNH MÃ 2FA (TOTP)
-# =========================================================================
 def generate_totp(secret):
     try:
         clean_secret = secret.upper().replace('0', 'O').replace('1', 'I')
@@ -164,7 +154,6 @@ HTML_PAGE = """
         .btn-row2 { background: #fd7e14; color: white; }
         .btn-row3 { background: #20c997; color: white; }
         
-        /* Nút Copy Dòng */
         .btn-copy { 
             background: #17a2b8; 
             padding: 12px 22px; 
@@ -179,7 +168,6 @@ HTML_PAGE = """
         }
         .btn-copy-all { background: #6c757d; font-size: 12px; padding: 4px 8px; border-radius: 4px; color: white; border: none; float: right; }
         
-        /* Nút 2FA cùng dòng */
         .btn-2fa-inline {
             background: #28a745;
             color: white;
@@ -253,7 +241,6 @@ HTML_PAGE = """
             <input type="text" id="device-name" placeholder="Ví dụ: Máy 1..." oninput="saveDeviceName()">
         </div>
 
-        <!-- Thêm sự kiện onkeydown để bắt phím Enter -->
         <textarea id="content" placeholder="Dán nội dung hoặc mã 2FA vào đây (Bấm Enter để gửi)..." onkeydown="handleKeyPress(event)"></textarea><br><br>
         
         <button onclick="sendData()" class="btn-success">📤 Gửi lên Máy tính</button>
@@ -317,16 +304,15 @@ HTML_PAGE = """
             return document.getElementById('device-name').value.trim() || 'Máy ẩn danh';
         }
 
-        // ⚡ HÀM BẮT PHÍM ENTER ĐỂ GỬI NHANH
+        // ⚡ HÀM BẮT PHÍM ENTER ĐÃ NÂNG CẤP (HỖ TRỢ CẢ MÁY TÍNH VÀ ĐIỆN THOẠI)
         function handleKeyPress(event) {
-            if (event.key === 'Enter') {
+            // Kiểm tra phím Enter (key === 'Enter' hoặc keyCode === 13)
+            if (event.key === 'Enter' || event.keyCode === 13) {
                 if (event.shiftKey) {
-                    // Nếu bấm Shift + Enter thì cho phép xuống dòng bình thường
-                    return;
+                    return; // Cho phép xuống dòng nếu giữ Shift + Enter
                 }
-                // Nếu chỉ bấm Enter đơn thuần: Ngăn chặn tạo dòng mới và thực hiện gửi
-                event.preventDefault();
-                sendData();
+                event.preventDefault(); // Chặn xuống dòng mặc định
+                sendData();             // Gửi dữ liệu ngay lập tức
             }
         }
 
@@ -619,4 +605,19 @@ def get_data():
     return jsonify({'status': 'ok', 'data': filtered_data})
 
 @app.route('/api/clear', methods=['POST'])
-def clear_data
+def clear_data():
+    user_code = request.form.get('user_code', '').strip()
+    
+    if not user_code:
+        return jsonify({'status': 'error', 'message': 'Vui lòng nhập Mã cá nhân!'})
+    
+    prefix = f"Mã cá nhân: {user_code} "
+    keys_to_delete = [k for k in clipboard_data if k.startswith(prefix)]
+    for k in keys_to_delete:
+        del clipboard_data[k]
+        
+    return jsonify({'status': 'ok'})
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
