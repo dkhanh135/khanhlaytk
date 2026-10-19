@@ -241,7 +241,8 @@ HTML_PAGE = """
             <input type="text" id="device-name" placeholder="Ví dụ: Máy 1..." oninput="saveDeviceName()">
         </div>
 
-        <textarea id="content" placeholder="Dán nội dung hoặc mã 2FA vào đây (Bấm Enter để gửi)..." onkeydown="handleKeyPress(event)"></textarea><br><br>
+        <!-- Dùng onkeypress kết hợp onkeydown để bắt chính xác phím Enter -->
+        <textarea id="content" placeholder="Dán nội dung hoặc mã 2FA vào đây (Bấm Enter để gửi)..." onkeypress="handleKeyPress(event)"></textarea><br><br>
         
         <button onclick="sendData()" class="btn-success">📤 Gửi lên Máy tính</button>
         <span id="send-status" style="margin-left: 10px; font-weight: bold; display: block; margin-top: 8px;"></span>
@@ -304,15 +305,18 @@ HTML_PAGE = """
             return document.getElementById('device-name').value.trim() || 'Máy ẩn danh';
         }
 
-        // ⚡ HÀM BẮT PHÍM ENTER ĐÃ NÂNG CẤP (HỖ TRỢ CẢ MÁY TÍNH VÀ ĐIỆN THOẠI)
+        // ⚡ HÀM BẮT PHÍM ENTER ĐÃ TỐI ƯU TRIỆT ĐỂ
         function handleKeyPress(event) {
-            // Kiểm tra phím Enter (key === 'Enter' hoặc keyCode === 13)
             if (event.key === 'Enter' || event.keyCode === 13) {
                 if (event.shiftKey) {
-                    return; // Cho phép xuống dòng nếu giữ Shift + Enter
+                    return; // Vẫn cho phép xuống dòng nếu giữ Shift + Enter
                 }
-                event.preventDefault(); // Chặn xuống dòng mặc định
-                sendData();             // Gửi dữ liệu ngay lập tức
+                event.preventDefault(); // Chặn hành vi xuống dòng mặc định của textarea
+                
+                // Dùng setTimeout cực ngắn để làm sạch khoảng trắng thừa trước khi gửi
+                setTimeout(() => {
+                    sendData();
+                }, 10);
             }
         }
 
@@ -429,7 +433,8 @@ HTML_PAGE = """
         }
 
         function sendData() {
-            const text = document.getElementById('content').value.trim();
+            const contentBox = document.getElementById('content');
+            const text = contentBox.value.trim();
             const userCode = getUserCode();
             const deviceName = getDeviceName();
 
@@ -440,7 +445,7 @@ HTML_PAGE = """
             }
 
             if (!text) {
-                alert('Vui lòng nhập nội dung cần gửi!');
+                contentBox.value = ''; // Làm sạch khoảng trắng rỗng
                 return;
             }
 
@@ -457,7 +462,7 @@ HTML_PAGE = """
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'ok') {
-                    document.getElementById('content').value = '';
+                    contentBox.value = ''; // Xóa sạch ô nhập sau khi gửi thành công
                     const status = document.getElementById('send-status');
                     status.style.color = '#28a745';
                     status.innerText = '✅ Đã gửi thành công!';
