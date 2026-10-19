@@ -154,12 +154,12 @@ HTML_PAGE = """
         .btn-row2 { background: #fd7e14; color: white; }
         .btn-row3 { background: #20c997; color: white; }
         
-        /* ⚡ ÉP NÚT COPY SIÊU NGỌN GÀNG */
+        /* ⚡ THU NHỎ NÚT COPY TỐI ĐA */
         .btn-copy { 
             background: #17a2b8 !important; 
-            padding: 4px 10px !important; 
-            font-size: 12px !important; 
-            border-radius: 4px !important; 
+            padding: 3px 6px !important; 
+            font-size: 11px !important; 
+            border-radius: 3px !important; 
             border: none !important; 
             color: white !important; 
             cursor: pointer !important; 
@@ -168,39 +168,41 @@ HTML_PAGE = """
             min-width: unset !important;
             flex: unset !important;
             display: inline-block !important;
+            line-height: 1.2 !important;
         }
         .btn-copy-all { background: #6c757d; font-size: 12px; padding: 4px 8px; border-radius: 4px; color: white; border: none; float: right; }
         
-        /* ⚡ ÉP NÚT 2FA SIÊU NGỌN GÀNG */
+        /* ⚡ THU NHỎ NÚT 2FA TỐI ĐA */
         .btn-2fa-inline {
             background: #28a745 !important;
             color: white !important;
             border: none !important;
-            padding: 4px 8px !important;
-            font-size: 12px !important;
-            border-radius: 4px !important;
+            padding: 3px 6px !important;
+            font-size: 11px !important;
+            border-radius: 3px !important;
             cursor: pointer !important;
             font-weight: bold !important;
             display: inline-flex !important;
             align-items: center !important;
-            gap: 4px !important;
+            gap: 3px !important;
             width: auto !important; 
             min-width: unset !important;
             flex: unset !important;
+            line-height: 1.2 !important;
         }
         .btn-2fa-inline:hover {
             background: #218838 !important;
         }
         .code-2fa-num {
             font-family: monospace;
-            font-size: 12px;
+            font-size: 11px;
             letter-spacing: 0.5px;
             background: rgba(0,0,0,0.2);
-            padding: 1px 3px;
-            border-radius: 3px;
+            padding: 1px 2px;
+            border-radius: 2px;
         }
         .time-2fa-left {
-            font-size: 10px;
+            font-size: 9px;
             opacity: 0.9;
         }
 
@@ -214,7 +216,7 @@ HTML_PAGE = """
         .data-table { width: 100%; border-collapse: collapse; }
         .data-table tr { border-bottom: 1px solid #eee; }
         .data-table tr:last-child { border-bottom: none; }
-        .data-table td { padding: 8px 6px; vertical-align: middle; }
+        .data-table td { padding: 6px 4px; vertical-align: middle; }
         
         .row-index { width: 40px; font-weight: bold; color: #6c757d; text-align: center; font-size: 12px; }
         .text-cell { font-family: Consolas, monospace; font-size: 14px; color: #111; word-break: break-all; }
@@ -534,7 +536,7 @@ HTML_PAGE = """
                                 <td class="row-index">Dòng ${index + 1}</td>
                                 <td class="text-cell">${item.text}</td>
                                 <td class="action-cell">
-                                    <div style="display: inline-flex; gap: 4px; align-items: center;">
+                                    <div style="display: inline-flex; gap: 3px; align-items: center;">
                                         ${btn2FA}
                                         <button class="btn-copy" onclick="copyText(decodeURIComponent('${escapedItem}'), this)">Copy</button>
                                     </div>
@@ -597,4 +599,42 @@ def get_data():
     prefix = f"Mã cá nhân: {user_code} "
     
     matching_devices = []
-    for k, item
+    for k, item_data in clipboard_data.items():
+        if k.startswith(prefix):
+            matching_devices.append((k, item_data))
+    
+    matching_devices.sort(key=lambda x: x[1]['line1_at'])
+    
+    filtered_data = []
+    for k, item_data in matching_devices:
+        device_lines = []
+        for text in item_data['lines']:
+            totp_info = detect_2fa_in_text(text)
+            device_lines.append({
+                'text': text,
+                'totp': totp_info
+            })
+        filtered_data.append({
+            'device_key': k,
+            'lines': device_lines
+        })
+    
+    return jsonify({'status': 'ok', 'data': filtered_data})
+
+@app.route('/api/clear', methods=['POST'])
+def clear_data():
+    user_code = request.form.get('user_code', '').strip()
+    
+    if not user_code:
+        return jsonify({'status': 'error', 'message': 'Vui lòng nhập Mã cá nhân!'})
+    
+    prefix = f"Mã cá nhân: {user_code} "
+    keys_to_delete = [k for k in clipboard_data if k.startswith(prefix)]
+    for k in keys_to_delete:
+        del clipboard_data[k]
+        
+    return jsonify({'status': 'ok'})
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
