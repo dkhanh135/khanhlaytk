@@ -164,7 +164,7 @@ HTML_PAGE = """
         .btn-row2 { background: #fd7e14; color: white; }
         .btn-row3 { background: #20c997; color: white; }
         
-        /* ⚡ ĐÃ LÀM TO NÚT COPY DÒNG (RỘNG VÀ DỄ BẤM HƠN) */
+        /* Nút Copy Dòng */
         .btn-copy { 
             background: #17a2b8; 
             padding: 12px 22px; 
@@ -253,7 +253,9 @@ HTML_PAGE = """
             <input type="text" id="device-name" placeholder="Ví dụ: Máy 1..." oninput="saveDeviceName()">
         </div>
 
-        <textarea id="content" placeholder="Dán nội dung hoặc mã 2FA vào đây..."></textarea><br><br>
+        <!-- Thêm sự kiện onkeydown để bắt phím Enter -->
+        <textarea id="content" placeholder="Dán nội dung hoặc mã 2FA vào đây (Bấm Enter để gửi)..." onkeydown="handleKeyPress(event)"></textarea><br><br>
+        
         <button onclick="sendData()" class="btn-success">📤 Gửi lên Máy tính</button>
         <span id="send-status" style="margin-left: 10px; font-weight: bold; display: block; margin-top: 8px;"></span>
     </div>
@@ -313,6 +315,19 @@ HTML_PAGE = """
 
         function getDeviceName() {
             return document.getElementById('device-name').value.trim() || 'Máy ẩn danh';
+        }
+
+        // ⚡ HÀM BẮT PHÍM ENTER ĐỂ GỬI NHANH
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                if (event.shiftKey) {
+                    // Nếu bấm Shift + Enter thì cho phép xuống dòng bình thường
+                    return;
+                }
+                // Nếu chỉ bấm Enter đơn thuần: Ngăn chặn tạo dòng mới và thực hiện gửi
+                event.preventDefault();
+                sendData();
+            }
         }
 
         function copyToClipboard(text) {
@@ -604,19 +619,4 @@ def get_data():
     return jsonify({'status': 'ok', 'data': filtered_data})
 
 @app.route('/api/clear', methods=['POST'])
-def clear_data():
-    user_code = request.form.get('user_code', '').strip()
-    
-    if not user_code:
-        return jsonify({'status': 'error', 'message': 'Vui lòng nhập Mã cá nhân!'})
-    
-    prefix = f"Mã cá nhân: {user_code} "
-    keys_to_delete = [k for k in clipboard_data if k.startswith(prefix)]
-    for k in keys_to_delete:
-        del clipboard_data[k]
-        
-    return jsonify({'status': 'ok'})
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+def clear_data
