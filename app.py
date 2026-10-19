@@ -154,7 +154,7 @@ HTML_PAGE = """
         .btn-row2 { background: #fd7e14; color: white; }
         .btn-row3 { background: #20c997; color: white; }
         
-        /* ⚡ TỐI ƯU CỰC KỲ TO RÕ TRÊN ĐIỆN THOẠI */
+        /* Nút Copy bình thường */
         .btn-copy { 
             background: #17a2b8 !important; 
             padding: 12px 20px !important; 
@@ -172,10 +172,11 @@ HTML_PAGE = """
         }
         .btn-copy-all { background: #6c757d; font-size: 12px; padding: 4px 8px; border-radius: 4px; color: white; border: none; float: right; }
         
+        /* ⚡ Ô 2FA HIỂN THỊ MỜ / TRONG SUỐT ĐỂ NHÌN THẤY NỘI DUNG BÊN DƯỚI */
         .btn-2fa-inline {
-            background: #28a745 !important;
-            color: white !important;
-            border: none !important;
+            background: rgba(40, 167, 69, 0.45) !important; /* Nền xanh lá mờ 45% */
+            color: #155724 !important;
+            border: 1px solid rgba(40, 167, 69, 0.6) !important;
             padding: 12px 18px !important;
             font-size: 16px !important;
             border-radius: 6px !important;
@@ -187,22 +188,25 @@ HTML_PAGE = """
             width: auto !important; 
             min-width: unset !important;
             flex: unset !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+            backdrop-filter: blur(1px); /* Hiệu ứng mờ kính nhẹ */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .btn-2fa-inline:hover {
-            background: #218838 !important;
+            background: rgba(40, 167, 69, 0.75) !important;
+            color: #fff !important;
         }
         .code-2fa-num {
             font-family: monospace;
             font-size: 17px;
             letter-spacing: 1px;
-            background: rgba(0,0,0,0.25);
+            background: rgba(255, 255, 255, 0.6);
             padding: 2px 6px;
             border-radius: 4px;
+            color: #1b4d2e;
         }
         .time-2fa-left {
             font-size: 12px;
-            opacity: 0.95;
+            opacity: 0.9;
         }
 
         .toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
@@ -573,12 +577,9 @@ def get_client_ip():
 def home():
     return render_template_string(HTML_PAGE)
 
-@app.route('/send', methods=['POST'])
+@app.route/send, methods=['POST'])
 def send_data():
     ip = get_client_ip()
     content = request.form.get('content', '').strip()
     user_code = request.form.get('user_code', '').strip()
-    device_name = request.form.get('device_name', '').strip() or f"Máy-{ip}"
-    
-    if not user_code:
-        return jsonify({'status': 'error', 'message': 'Vui lòng nhập Mã cá
+    device_name = request.form.get('device_name', '').strip() or
